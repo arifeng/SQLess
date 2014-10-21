@@ -9,6 +9,8 @@ kTablePrefix = 'SQLessTable_'
 KColumnPrefix = 'SQLessCol_'
 kIdent = '    '
 
+kIdent2 = kIdent + kIdent
+
 class CPlusPlus:
     def __init__(self, schema, sqlgen, namespace):
         self.sqlgen = sqlgen
@@ -210,24 +212,182 @@ private:
         template = template.replace('$TABLE_NAME', kTablePrefix + schema['name'])
         template = template.replace('$DATABASE_NAME', kDatabasePrefix + database)
 
-        template = template.replace('$INSERT_PARAM', self._DeclareInsertParam(schema))
-        template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(schema))
-        template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(schema))
-        template = template.replace('$UPDATE_PARAM', self._DeclareUpdateParam(schema))
+        template = template.replace('$INSERT_PARAM', self._DeclareInsertParam(schema, schema['name']))
+        template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(schema, schema['name']))
+        template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(schema, schema['name']))
+        template = template.replace('$UPDATE_PARAM', self._DeclareUpdateParam(schema, schema['name']))
 
         return template
 
-    def _DeclareInsertParam(self, schema):
-        return 'NOT_IMPLEMENTED'
+    def _SQLTypeToCPPType(self, col_type, is_param):
+        '''将SQL的数据类型转为相应C++数据类型'''
+        if self.sqlgen.Name() != 'sqlite':
+            print 'Unknown database :' + self.sqlgen.Name()
+            exit(1)
 
-    def _DeclareSelectParam(self, schema):
-        return 'NOT_IMPLEMENTED'
+        sql_type = self.sqlgen.MapDataType(col_type)
+        cpp_type = ''
+        if sql_type == 'INTEGER':
+            cpp_type = 'int'
+        elif sql_type == 'REAL':
+            cpp_type = 'double'
+        elif sql_type == 'TEXT' or sql_type == 'BLOB':
+            cpp_type = 'const std::string&' if is_param else 'std::string'
+        else:
+            print 'unknown SQL type: ' + sql_type
+            exit(1)
 
-    def _DeclareSelectResult(self, schema):
-        return 'NOT_IMPLEMENTED'
+        return cpp_type
 
-    def _DeclareUpdateParam(self, schema):
-        return 'NOT_IMPLEMENTED'
+    def _DeclareInsertParam(self, schema, table):
+        template = '''
+    class InsertParam {
+    public:
+        InsertParam();
+        ~InsertParam();
+
+$COLUMN_SETTERS
+    private:
+        friend class $TABLE_NAME;
+$COLUMN_MEMBERS
+    };
+        '''
+
+        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+
+        column_setters = ''
+        column_members = ''
+        for col in schema['columns']:
+            # void set_col1(int i);
+            column_setters += kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
+            # std::string col3_;
+            column_members += kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
+            # bool has_col3_;
+            column_members += kIdent2 + 'bool has_' + col['name'] + '_;\n'
+
+        template = template.replace('$COLUMN_SETTERS', column_setters)
+        template = template.replace('$COLUMN_MEMBERS', column_members)
+
+        return template
+
+
+    def _DeclareSelectParam(self, schema, table):
+        template = """
+    class SelectParam {
+      public:
+          SelectParam();
+          ~SelectParam();
+
+$COLUMN_ADDERS
+
+$COLUMN_ORDERBYS
+
+        void set_condition(const std::string& cond);
+        void set_limit(int count);
+
+      private:
+        friend class $TABLE_NAME;
+
+$COLUMN_STATUS
+
+        std::string condition_;
+        std::string order_by_;
+        bool desc_;
+        int limit_count_;
+    };
+        """
+
+        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+
+        column_adders = ''
+        column_orderbys = ''
+        column_status = ''
+        for col in schema['columns']:
+            # void add_col1() { col1_ = true; }
+            column_adders += kIdent2 + 'void add_' + col['name'] + '() { ' + col['name'] + '_ = true; }\n'
+            # void order_by_col1(bool desc = false);
+            column_orderbys += kIdent2 + 'void order_by_' + col['name'] + '(bool desc = false);\n'
+            # bool col1_;
+            column_status += kIdent2 + 'bool ' + col['name'] + '_;\n'
+
+        template = template.replace('$COLUMN_ADDERS', column_adders)
+        template = template.replace('$COLUMN_ORDERBYS', column_orderbys)
+        template = template.replace('$COLUMN_STATUS', column_status)
+
+        return template
+
+    def _DeclareSelectResult(self, schema, table):
+        template = """
+  class SelectResult {
+    public:
+        SelectResult();
+        ~SelectResult();
+
+$COLUMN_GETTERS
+
+        bool getRow();  // 获取下一条结果
+    private:
+        friend class $TABLE_NAME;
+        sqlite3_stmt* stmt_;
+        SelectParam param_;
+
+$COLUMN_VALUES
+    };
+        """
+
+        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+
+        column_getters = ''
+        column_values = ''
+        for col in schema['columns']:
+            cpp_type = self._SQLTypeToCPPType(col['type'], False)
+            # int col1() { return col1_; }
+            column_getters += kIdent2 + cpp_type + ' ' + col['name'] + '() { return ' + col['name'] + '_; }\n'
+            # int col1_;
+            column_values += kIdent2 + cpp_type + ' ' + col['name'] + '_;\n'
+
+        template = template.replace('$COLUMN_GETTERS', column_getters)
+        template = template.replace('$COLUMN_VALUES', column_values)
+
+        return template
+
+    def _DeclareUpdateParam(self, schema, table):
+        template = """
+    class UpdateParam {
+    public:
+        UpdateParam();
+        ~UpdateParam();
+
+$COLUMN_SETTERS
+
+        void set_condition(const std::string& cond);
+
+    private:
+        friend class $TABLE_NAME;
+
+        std::string condition_;
+
+$COLUMN_MEMBERS
+    };
+        """
+
+        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+
+        column_setters = ''
+        column_members = ''
+        for col in schema['columns']:
+            # void set_col1(int i);
+            column_setters += kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
+            # std::string col3_;
+            column_members += kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
+            # bool has_col3_;
+            column_members += kIdent2 + 'bool has_' + col['name'] + '_;\n'
+
+        template = template.replace('$COLUMN_SETTERS', column_setters)
+        template = template.replace('$COLUMN_MEMBERS', column_members)
+
+        return template
+
 
     def _Header(self):
         h = '''// Generated by SQLess v$VERSION
@@ -240,7 +400,7 @@ private:
 #include <vector>
         '''
         h = h.replace('$VERSION', common.Version())
-        h = h.replace('$UUID', str(uuid.uuid1()))
+        h = h.replace('$UUID', str(uuid.uuid1()).replace('-', '_'))
 
         # 数据库所需要的头文件
         h += '\n'

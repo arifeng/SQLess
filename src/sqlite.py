@@ -14,7 +14,7 @@ class Sqlite:
     def CreateTableSQL(self, schema):
         sql = 'CREATE TABLE ' + schema['name'] + ' (\n';
         for col in schema['columns']:
-            ctype = self._MapDataType(col['type'])
+            ctype = self.MapDataType(col['type'])
 
             sql += col['name'] + ' ' + ctype
 
@@ -38,7 +38,7 @@ class Sqlite:
 
         return sql
 
-    def _MapDataType(self, t):
+    def MapDataType(self, t):
         integer_alias = ['integer', 'INTEGER', 'int', 'INT']
         real_alias = ['real', 'REAL', 'float', 'FLOAT', 'double', 'DOUBLE']
         text_alias = ['text', 'TEXT', 'char', 'varchar', 'text']
