@@ -1,0 +1,42 @@
+{
+    "databases": [
+      {
+        "name": "db1",
+        "desc": "a test database",
+        "tables": [
+          {
+            "name": "tb1",
+            "desc": "a test table",
+            "columns": [
+              {
+                "name": "col1",
+                "type": "integer",
+                "desc": "the description of col1",
+                "primary_key": true,
+                "auto_increment": true,
+                "index": true
+              },
+              {
+                "name": "col2",
+                "type": "real",
+                "desc": "the description of col1",
+                "default": 0
+              },
+              {
+                "name": "col3",
+                "type": "text",
+                "desc": "the description of col3",
+                "default": "hahaha",
+                "unqiue": true
+              },
+              {
+                "name": "col4",
+                "type": "blob",
+                "desc": "the description of col4"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+}
