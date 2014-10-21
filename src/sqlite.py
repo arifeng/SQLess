@@ -5,10 +5,8 @@ class Sqlite:
     def __init__(self):
         pass
 
-    def Header(self):
-        '''Sqlite需要包含的头文件'''
-        # TODO：指定语言
-        return '#include <sqlite3.h>'
+    def Name(self):
+        return 'sqlite'
 
     def CreateDatabaseSQL(self, schema):
         return 'CREATE DATABASE ' + schema['name']
