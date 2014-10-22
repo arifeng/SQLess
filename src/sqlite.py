@@ -38,6 +38,22 @@ class Sqlite:
 
         return sql
 
+    def HasTableSQL(self, table):
+        ''' 数据库中是否存在指定名称的表 '''
+        return 'SELECT name FROM sqlite_master WHERE type = "table" AND name = "' + table + '";'
+
+
+    def DropTableSQL(self, table):
+        ''' 删除数据表 '''
+        return 'DROP TABLE IF EXISTS "' + table + '";'
+
+
+    def BeginTransitionSQL(self):
+        return 'BEGIN;'
+
+    def EndTransitionSQL(self):
+        return 'COMMIT;'
+
     def MapDataType(self, t):
         integer_alias = ['integer', 'INTEGER', 'int', 'INT']
         real_alias = ['real', 'REAL', 'float', 'FLOAT', 'double', 'DOUBLE']

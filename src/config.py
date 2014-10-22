@@ -1,0 +1,15 @@
+#coding: utf-8
+
+version='0.1'
+
+# 生成的数据库/表等类的前缀
+kDatabasePrefix = 'SQLessDB_'
+kTablePrefix = 'SQLessTable_'
+KColumnPrefix = 'SQLessCol_'
+
+# 生成代码文件名的后缀
+kTargetFileSuffix = ".sqless"
+
+# 代码缩进空格数
+kIdent = '    '
+kIdent2 = kIdent + kIdent

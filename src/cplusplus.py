@@ -1,41 +1,41 @@
 #coding: utf-8
-# C++ 目标代码生成器
+# 生成C++ 目标代码头文件(.h)
 
-import common
+import config
+import cplusplus_sqlite
 import uuid
 
-kDatabasePrefix = 'SQLessDB_'
-kTablePrefix = 'SQLessTable_'
-KColumnPrefix = 'SQLessCol_'
-kIdent = '    '
-
-kIdent2 = kIdent + kIdent
-
 class CPlusPlus:
-    def __init__(self, schema, sqlgen, namespace):
+    def __init__(self, schema, sqlgen, savename):
         self.sqlgen = sqlgen
         self.schema = schema
-        self.namespace = namespace
+        self.namespace = schema['namespace']
+        self.impl = cplusplus_sqlite.CPlusPlusImpl(schema, sqlgen, savename)
 
     def Generate(self):
-        print self._Header()
-        print self._ForwardDeclare()
-        print self._DeclareConnection()
+        #print self.GenerateHeaderFile()
+        print self.impl.GenerateImplFile()
+
+    def GenerateHeaderFile(self):
+        content = self._Header()
+        content += self._ForwardDeclare()
+        content += self._DeclareConnection()
 
         for database in self.schema['databases']:
-            print self._DeclareDatabase(database)
+            content += self._DeclareDatabase(database)
             for table in database['tables']:
-                print self._DeclareTable(table, database['name'])
+                content += self._DeclareTable(table, database['name'])
 
-        print self._Footer()
+        content += self._Footer()
+        return content
 
     def _ForwardDeclare(self):
         '''所有数据库类、表类的前置声明'''
         fd = ''
         for database in self.schema['databases']:
-           fd += 'class ' + kDatabasePrefix + database['name'] + ';\n'
+           fd += 'class ' + config.kDatabasePrefix + database['name'] + ';\n'
            for table in database['tables']:
-               fd += 'class ' + kTablePrefix + table['name'] + ';\n'
+               fd += 'class ' + config.kTablePrefix + table['name'] + ';\n'
 
         return fd;
 
@@ -85,12 +85,12 @@ public:
         dc = dc.replace('$CONNECT_PARAMS', connect_params)
 
         for database in self.schema['databases']:
-            dc += kIdent + 'bool has_database_' + database['name'] + '();\n'
-            dc += kIdent + kDatabasePrefix + database['name'] + '* database_' + database['name'] + '();\n'  # 数据库获取函数
+            dc += config.kIdent + 'bool has_database_' + database['name'] + '();\n'
+            dc += config.kIdent + config.kDatabasePrefix + database['name'] + '* database_' + database['name'] + '();\n'  # 数据库获取函数
 
         dc += '\nprivate:\n'
         for database in self.schema['databases']:
-            dc += kIdent + kDatabasePrefix + database['name'] + '* database_' + database['name'] + '_;\n'
+            dc += config.kIdent + config.kDatabasePrefix + database['name'] + '* database_' + database['name'] + '_;\n'
 
         dc += '};\n'
 
@@ -135,17 +135,17 @@ private:
 $TABLE_MEMBERS
 };
 '''
-        template = template.replace('$DATABASE_NAME', kDatabasePrefix + schema['name'])
+        template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + schema['name'])
 
         table_getters = ''
         for table in schema['tables']:
-            table_getters += kIdent + 'has_table_' + table['name'] + '();\n'
-            table_getters += kIdent + kTablePrefix + table['name'] + '* table_' + table['name'] + '();\n'
+            table_getters += config.kIdent + 'has_table_' + table['name'] + '();\n'
+            table_getters += config.kIdent + config.kTablePrefix + table['name'] + '* table_' + table['name'] + '();\n'
         template = template.replace('$TABLE_GETTERS', table_getters)
 
         table_members_ = ''
         for database in schema['tables']:
-            table_members_ += kIdent + kTablePrefix + table['name'] + '* table_' + table['name'] + '_;\n'
+            table_members_ += config.kIdent + config.kTablePrefix + table['name'] + '* table_' + table['name'] + '_;\n'
         template = template.replace('$TABLE_MEMBERS', table_members_)
 
         return template
@@ -209,8 +209,8 @@ private:
     $DATABASE_NAME* db_;
 };
 '''
-        template = template.replace('$TABLE_NAME', kTablePrefix + schema['name'])
-        template = template.replace('$DATABASE_NAME', kDatabasePrefix + database)
+        template = template.replace('$TABLE_NAME', config.kTablePrefix + schema['name'])
+        template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + database)
 
         template = template.replace('$INSERT_PARAM', self._DeclareInsertParam(schema, schema['name']))
         template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(schema, schema['name']))
@@ -253,17 +253,17 @@ $COLUMN_MEMBERS
     };
         '''
 
-        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
 
         column_setters = ''
         column_members = ''
         for col in schema['columns']:
             # void set_col1(int i);
-            column_setters += kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
+            column_setters += config.kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
             # std::string col3_;
-            column_members += kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
+            column_members += config.kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
             # bool has_col3_;
-            column_members += kIdent2 + 'bool has_' + col['name'] + '_;\n'
+            column_members += config.kIdent2 + 'bool has_' + col['name'] + '_;\n'
 
         template = template.replace('$COLUMN_SETTERS', column_setters)
         template = template.replace('$COLUMN_MEMBERS', column_members)
@@ -297,18 +297,18 @@ $COLUMN_STATUS
     };
         """
 
-        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
 
         column_adders = ''
         column_orderbys = ''
         column_status = ''
         for col in schema['columns']:
             # void add_col1() { col1_ = true; }
-            column_adders += kIdent2 + 'void add_' + col['name'] + '() { ' + col['name'] + '_ = true; }\n'
+            column_adders += config.kIdent2 + 'void add_' + col['name'] + '() { ' + col['name'] + '_ = true; }\n'
             # void order_by_col1(bool desc = false);
-            column_orderbys += kIdent2 + 'void order_by_' + col['name'] + '(bool desc = false);\n'
+            column_orderbys += config.kIdent2 + 'void order_by_' + col['name'] + '(bool desc = false);\n'
             # bool col1_;
-            column_status += kIdent2 + 'bool ' + col['name'] + '_;\n'
+            column_status += config.kIdent2 + 'bool ' + col['name'] + '_;\n'
 
         template = template.replace('$COLUMN_ADDERS', column_adders)
         template = template.replace('$COLUMN_ORDERBYS', column_orderbys)
@@ -335,16 +335,16 @@ $COLUMN_VALUES
     };
         """
 
-        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
 
         column_getters = ''
         column_values = ''
         for col in schema['columns']:
             cpp_type = self._SQLTypeToCPPType(col['type'], False)
             # int col1() { return col1_; }
-            column_getters += kIdent2 + cpp_type + ' ' + col['name'] + '() { return ' + col['name'] + '_; }\n'
+            column_getters += config.kIdent2 + cpp_type + ' ' + col['name'] + '() { return ' + col['name'] + '_; }\n'
             # int col1_;
-            column_values += kIdent2 + cpp_type + ' ' + col['name'] + '_;\n'
+            column_values += config.kIdent2 + cpp_type + ' ' + col['name'] + '_;\n'
 
         template = template.replace('$COLUMN_GETTERS', column_getters)
         template = template.replace('$COLUMN_VALUES', column_values)
@@ -371,17 +371,17 @@ $COLUMN_MEMBERS
     };
         """
 
-        template = template.replace('$TABLE_NAME', kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
 
         column_setters = ''
         column_members = ''
         for col in schema['columns']:
             # void set_col1(int i);
-            column_setters += kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
+            column_setters += config.kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
             # std::string col3_;
-            column_members += kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
+            column_members += config.kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
             # bool has_col3_;
-            column_members += kIdent2 + 'bool has_' + col['name'] + '_;\n'
+            column_members += config.kIdent2 + 'bool has_' + col['name'] + '_;\n'
 
         template = template.replace('$COLUMN_SETTERS', column_setters)
         template = template.replace('$COLUMN_MEMBERS', column_members)
@@ -399,7 +399,7 @@ $COLUMN_MEMBERS
 #include <string>
 #include <vector>
         '''
-        h = h.replace('$VERSION', common.Version())
+        h = h.replace('$VERSION', config.version)
         h = h.replace('$UUID', str(uuid.uuid1()).replace('-', '_'))
 
         # 数据库所需要的头文件
