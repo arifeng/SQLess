@@ -12,7 +12,7 @@ class Sqlite:
         return 'CREATE DATABASE ' + schema['name']
 
     def CreateTableSQL(self, schema):
-        sql = 'CREATE TABLE ' + schema['name'] + ' (\n';
+        sql = 'CREATE TABLE ' + schema['name'] + ' (';
         for col in schema['columns']:
             ctype = self.MapDataType(col['type'])
 
@@ -32,7 +32,7 @@ class Sqlite:
               print 'unknown default value: ' + str(default_value)
               exit(1)
 
-            sql += ',\n'
+            sql += ', '
 
         sql += ');'
 

@@ -22,88 +22,88 @@ std::string &TrimRight(std::string &s, const std::string &m) {
 
 namespace ns {
 
-SqlessConn::SqlessConn() {
+SQLessConn::SQLessConn() {
 }
 
-SqlessConn::~SqlessConn() {
+SQLessConn::~SQLessConn() {
     if (database_db1_)
         delete database_db1_;
 
     close();
 }
 
-bool SqlessConn::connect(const std::string& path, const std::string& key /* = "" */) {
+bool SQLessConn::connect(const std::string& path, const std::string& key /* = "" */) {
     if (sqlite3_open(path.c_str(), &handle_) != SQLITE_OK)
         return false;
 
     return true;
 }
 
-bool SqlessConn::isValid() {
+bool SQLessConn::isValid() {
     return handle_ != NULL;
 }
 
-void SqlessConn::beginTransition() {
+void SQLessConn::beginTransition() {
     sqlite3_exec(handle_, "BEGIN;", NULL, NULL, NULL);
 }
 
-void SqlessConn::endTransition() {
+void SQLessConn::endTransition() {
     sqlite3_exec(handle_, "COMMIT;", NULL, NULL, NULL);
 }
 
-void SqlessConn::close() {
+void SQLessConn::close() {
     sqlite3_close(handle_);
 }
 
-bool SqlessConn::has_database_db1() {
+bool SQLessConn::has_database_db1() {
     return true;
 }
 
-SqlessDB_db1 *SqlessConn::database_db1() {
+SQLessDB_db1 *SQLessConn::database_db1() {
     if (!database_db1_)
-        database_db1_ = new SqlessDB_db1(this);
+        database_db1_ = new SQLessDB_db1(this);
 
     return database_db1_;
 }
 
-const char SqlessDB_db1::kName[] = "db1";
-const char SqlessDB_db1::kDescription[] = "a test database";
+const char SQLessDB_db1::kName[] = "db1";
+const char SQLessDB_db1::kDescription[] = "a test database";
 
-SqlessDB_db1::SqlessDB_db1(SqlessConn* conn)
+SQLessDB_db1::SQLessDB_db1(SQLessConn* conn)
     :conn_(conn) {
 
     if (!exists())
         create();
 }
 
-SqlessDB_db1::~SqlessDB_db1() {
+SQLessDB_db1::~SQLessDB_db1() {
     if (table_tb1_)
         delete table_tb1_;
 
 }
 
-bool SqlessDB_db1::exists() {
+bool SQLessDB_db1::exists() {
     return true;
 }
 
-void SqlessDB_db1::drop() {
+void SQLessDB_db1::drop() {
 
 }
 
-bool SqlessDB_db1::execQuery(const std::string& sql_stmt) {
+bool SQLessDB_db1::execQuery(const std::string& sql_stmt) {
     use();
     return sqlite3_exec(conn_->handle(), sql_stmt.c_str(), NULL, NULL, NULL) == SQLITE_OK;
 }
 
-bool SqlessDB_db1::create() {
+bool SQLessDB_db1::create() {
     return true;
 }
 
-bool SqlessDB_db1::use() {
+bool SQLessDB_db1::use() {
     return true;
 }
 
-bool SqlessDB_db1::has_table_tb1() {
+bool SQLessDB_db1::has_table_tb1() {
     std::string sql = "SELECT name FROM sqlite_master WHERE type = \"table\" AND name = \"tb1\";";
 
     sqlite3_stmt* stmt = NULL;
@@ -120,46 +120,308 @@ bool SqlessDB_db1::has_table_tb1() {
     return exists;
 }
 
-SqlessTable_tb1* SqlessDB_db1::table_tb1() {
+SQLessTable_tb1* SQLessDB_db1::table_tb1() {
     if (!table_tb1_)
-        table_tb1_ = new SqlessTable_tb1(this);
+        table_tb1_ = new SQLessTable_tb1(this);
 
     return table_tb1_;
 }
 
-const char SqlessTable_tb1::kName[] = "tb1";
-const char SqlessTable_tb1::kDescription[] = "a test table";
+const char SQLessTable_tb1::kName[] = "tb1";
+const char SQLessTable_tb1::kDescription[] = "a test table";
 
-SqlessTable_tb1::SqlessTable_tb1(SqlessDB_db1* db)
+SQLessTable_tb1::SQLessTable_tb1(SQLessDB_db1* db)
     :db_(db) {
     if (!exists())
         create();
 }
 
-SqlessTable_tb1::~SqlessTable_tb1() {
+SQLessTable_tb1::~SQLessTable_tb1() {
 }
 
-bool SqlessTable_tb1::exists() {
+bool SQLessTable_tb1::exists() {
     return db_->has_table_tb1();
 }
 
-bool SqlessTable_tb1::create() {
-    return db_->execQuery("CREATE TABLE tb1 (
-col1 INTEGER PRIMARY_KEY AUTOINCREMENT,
-col2 REAL DEFAULT 0,
-col3 TEXT DEFAULT 'hahaha',
-col4 BLOB,
-);");
+bool SQLessTable_tb1::create() {
+    return db_->execQuery("CREATE TABLE tb1 (col1 INTEGER PRIMARY_KEY AUTOINCREMENT, col2 REAL DEFAULT 0, col3 TEXT DEFAULT 'hahaha', col4 BLOB, );");
 }
 
-bool SqlessTable_tb1::drop() {
+bool SQLessTable_tb1::drop() {
     return db_->execQuery("DROP TABLE IF EXISTS \"tb1\";");
 }
 
-int SqlessTable_tb1::row_count() {
+int SQLessTable_tb1::row_count() {
     //TODO: 计算表行数
     return 0;
 }
 
-} // namespace ns
+SQLessTable_tb1::InsertParam::InsertParam():
+    col1_(0),
+    has_col1_(false),
+    col2_(0),
+    has_col2_(false),
+    has_col3_(false),
+    has_col4_(false) {
+}
 
+SQLessTable_tb1::InsertParam::~InsertParam() {
+}
+
+void SQLessTable_tb1::InsertParam::set_col1(int i) {
+    col1_ = i;
+    has_col1_ = true;
+}
+
+void SQLessTable_tb1::InsertParam::set_col2(double i) {
+    col2_ = i;
+    has_col2_ = true;
+}
+
+void SQLessTable_tb1::InsertParam::set_col3(const std::string& i) {
+    col3_ = i;
+    has_col3_ = true;
+}
+
+void SQLessTable_tb1::InsertParam::set_col4(const std::string& i) {
+    col4_ = i;
+    has_col4_ = true;
+}
+
+bool SQLessTable_tb1::insert(const InsertParam& param) {
+    std::string sql = "INSERT INTO tb1 (";
+    std::string fields;
+    if (param.has_col1_)
+        fields += "col1, ";
+    if (param.has_col2_)
+        fields += "col2, ";
+    if (param.has_col3_)
+        fields += "col3, ";
+    if (param.has_col4_)
+        fields += "col4, ";
+
+
+    sql += TrimRight(fields, " ,");
+    sql += ") VALUES (";
+
+    fields.clear();
+    if (param.has_col1_)
+        fields += "@col1, ";
+    if (param.has_col2_)
+        fields += "@col2, ";
+    if (param.has_col3_)
+        fields += "@col3, ";
+    if (param.has_col4_)
+        fields += "@col4, ";
+
+
+    sql += TrimRight(fields, " ,");
+    sql += ");";
+
+    sqlite3_stmt* stmt = NULL;
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+        return false;
+
+    if (param.has_col1_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@col1"), param.col1_);
+    if (param.has_col2_)
+        sqlite3_bind_double(stmt, sqlite3_bind_parameter_index(stmt, "@col2"), param.col2_);
+    if (param.has_col3_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col3"), param.col3_.c_str(), param.col3_.length(), SQLITE_STATIC);
+    if (param.has_col4_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col4"), param.col4_.c_str(), param.col4_.length(), SQLITE_STATIC);
+
+
+    bool succ = sqlite3_step(stmt) == SQLITE_DONE;
+
+    sqlite3_finalize(stmt);
+
+    return succ;
+}
+
+SQLessTable_tb1::SelectParam::SelectParam():
+    col1_(false),
+    col2_(false),
+    col3_(false),
+    col4_(false) {
+}
+
+SQLessTable_tb1::SelectParam::~SelectParam() {
+}
+
+SQLessTable_tb1::SelectResult::SelectResult():
+    col1_(0),
+    col2_(0),
+    stmt_(NULL) {
+}
+
+SQLessTable_tb1::SelectResult::~SelectResult() {
+}
+
+bool SQLessTable_tb1::select(const SelectParam& param, SelectResult* result) {
+    std::string sql = "SELECT ";
+    std::string fields;
+    if (param.col1_)
+        fields += "col1, ";
+    if (param.col2_)
+        fields += "col2, ";
+    if (param.col3_)
+        fields += "col3, ";
+    if (param.col4_)
+        fields += "col4, ";
+
+
+    sql += TrimRight(fields, " ,");
+    sql += " FROM tb1";
+
+    if (!param.condition_.empty()) {
+        sql += " WHERE ";
+        sql += param.condition_;
+    }
+
+    sql += ";";
+
+    sqlite3_stmt* stmt = NULL;
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+        return false;
+
+    result->param_ = param;
+    result->stmt_ = stmt;
+
+    return true;
+}
+
+bool SQLessTable_tb1::SelectResult::getRow() {
+    if (!stmt_)
+        return false;
+
+    if (sqlite3_step(stmt_) != SQLITE_ROW) {
+        sqlite3_finalize(stmt_);
+        stmt_ = NULL;
+        return false;
+    }
+
+    int _columns = sqlite3_column_count(stmt_);
+
+    bool col1 = param_.col1_;
+    bool col2 = param_.col2_;
+    bool col3 = param_.col3_;
+    bool col4 = param_.col4_;
+
+
+    for (int i = 0; i < _columns; i++) {
+        if (col1) {
+            col1_ = sqlite3_column_int(stmt_, i);
+            col1 = false;
+        } else if (col2) {
+            col2_ = sqlite3_column_double(stmt_, i);
+            col2 = false;
+        } else if (col3) {
+            col3_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            col3 = false;
+        } else if (col4) {
+            col4_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            col4 = false;
+        } 
+    }
+
+    return true;
+}
+
+SQLessTable_tb1::UpdateParam::UpdateParam():
+    col1_(0),
+    has_col1_(false),
+    col2_(0),
+    has_col2_(false),
+    has_col3_(false),
+    has_col4_(false) {
+}
+
+SQLessTable_tb1::UpdateParam::~UpdateParam() {
+}
+
+void SQLessTable_tb1::UpdateParam::set_col1(int i) {
+    col1_ = i;
+    has_col1_ = true;
+}
+
+void SQLessTable_tb1::UpdateParam::set_col2(double i) {
+    col2_ = i;
+    has_col2_ = true;
+}
+
+void SQLessTable_tb1::UpdateParam::set_col3(const std::string& i) {
+    col3_ = i;
+    has_col3_ = true;
+}
+
+void SQLessTable_tb1::UpdateParam::set_col4(const std::string& i) {
+    col4_ = i;
+    has_col4_ = true;
+}
+
+bool SQLessTable_tb1::update(const UpdateParam& param, int* affected_rows /* = NULL */) {
+    std::string sql = "UPDATE tb1 SET ";
+    if (param.has_col1_)
+        sql += "col1=@col1, ";
+    if (param.has_col2_)
+        sql += "col2=@col2, ";
+    if (param.has_col3_)
+        sql += "col3=@col3, ";
+    if (param.has_col4_)
+        sql += "col4=@col4, ";
+
+
+    TrimRight(sql, ", ");
+
+    if (!param.condition_.empty())
+        sql.append("WHERE ").append(param.condition_);
+
+    sql.append(";");
+
+    sqlite3_stmt* stmt = NULL;
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+        return false;
+
+    if (param.has_col1_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@col1"), param.col1_);
+    if (param.has_col2_)
+        sqlite3_bind_double(stmt, sqlite3_bind_parameter_index(stmt, "@col2"), param.col2_);
+    if (param.has_col3_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col3"), param.col3_.c_str(), param.col3_.length(), SQLITE_STATIC);
+    if (param.has_col4_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col4"), param.col4_.c_str(), param.col4_.length(), SQLITE_STATIC);
+
+
+    bool succ = sqlite3_step(stmt) == SQLITE_DONE;
+
+    sqlite3_finalize(stmt);
+
+    if (succ && affected_rows)
+        *affected_rows = sqlite3_changes(db_->connection()->handle());
+
+    return succ;
+}
+
+bool SQLessTable_tb1::remove(const std::string& condition, int* affected_rows /* = NULL */) {
+    std::string sql = "DELETE FROM tb1 ";
+
+    if (!condition.empty()) {
+        sql += "WHERE ";
+        sql += condition;
+    }
+
+    sql += ";";
+
+    bool succ = db_->execQuery(sql);
+    if (succ && affected_rows)
+        *affected_rows = sqlite3_changes(db_->connection()->handle());
+
+    return succ;
+}
+
+bool SQLessTable_tb1::clear(int* affected_rows /* = NULL */) {
+    return remove("", affected_rows);
+}
+
+} // namespace ns

@@ -13,3 +13,4 @@ kTargetFileSuffix = ".sqless"
 # 代码缩进空格数
 kIdent = '    '
 kIdent2 = kIdent + kIdent
+kIdent3 = kIdent + kIdent2
