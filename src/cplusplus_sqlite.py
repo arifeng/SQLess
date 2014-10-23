@@ -254,14 +254,16 @@ int SQLessTable_$TABLE::row_count() {
             cdtor += config.kIdent + 'has_' + col['name'] + '_(false),\n'
 
             # 设置选中的列
-            #void SQLessTable_tb1::InsertParam::set_col1(int i) {
+            #InsertParam& SQLessTable_tb1::InsertParam::set_col1(int i) {
             #   col1_ = i;
             #   has_col1_ = true;
+            #   return *this;
             #}
-            col_setters += '\nvoid SQLessTable_' + schema['name'] + '::InsertParam::set_' + col['name'] + \
+            col_setters += '\nSQLessTable_' + schema['name'] + '::InsertParam& ' + 'SQLessTable_' + schema['name'] + '::InsertParam::set_' + col['name'] + \
                            '(' + self.declare._SQLTypeToCPPType(col['type'], True) + ' i) {\n' + \
                            config.kIdent + col['name'] + '_ = i;\n' + \
-                           config.kIdent + 'has_' + col['name'] + '_ = true;\n}\n'
+                           config.kIdent + 'has_' + col['name'] + '_ = true;\n' + \
+                           config.kIdent + 'return *this;\n}\n'
 
         cdtor = cdtor.rstrip(',\n') + ' {\n}\n'
 
@@ -537,7 +539,7 @@ bool SQLessTable_$TABLE::remove(const std::string& condition, int* affected_rows
     return succ;
 }
 
-bool SQLessTable_tb1::clear(int* affected_rows /* = NULL */) {
+bool SQLessTable_$TABLE::clear(int* affected_rows /* = NULL */) {
     return remove("", affected_rows);
 }
 '''

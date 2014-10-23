@@ -26,8 +26,8 @@ SQLessConn::SQLessConn() {
 }
 
 SQLessConn::~SQLessConn() {
-    if (database_db1_)
-        delete database_db1_;
+    if (database_TaskList_)
+        delete database_TaskList_;
 
     close();
 }
@@ -55,56 +55,56 @@ void SQLessConn::close() {
     sqlite3_close(handle_);
 }
 
-bool SQLessConn::has_database_db1() {
+bool SQLessConn::has_database_TaskList() {
     return true;
 }
 
-SQLessDB_db1 *SQLessConn::database_db1() {
-    if (!database_db1_)
-        database_db1_ = new SQLessDB_db1(this);
+SQLessDB_TaskList *SQLessConn::database_TaskList() {
+    if (!database_TaskList_)
+        database_TaskList_ = new SQLessDB_TaskList(this);
 
-    return database_db1_;
+    return database_TaskList_;
 }
 
-const char SQLessDB_db1::kName[] = "db1";
-const char SQLessDB_db1::kDescription[] = "a test database";
+const char SQLessDB_TaskList::kName[] = "TaskList";
+const char SQLessDB_TaskList::kDescription[] = "Where all history tasks are stored by WebImager";
 
-SQLessDB_db1::SQLessDB_db1(SQLessConn* conn)
+SQLessDB_TaskList::SQLessDB_TaskList(SQLessConn* conn)
     :conn_(conn) {
 
     if (!exists())
         create();
 }
 
-SQLessDB_db1::~SQLessDB_db1() {
-    if (table_tb1_)
-        delete table_tb1_;
+SQLessDB_TaskList::~SQLessDB_TaskList() {
+    if (table_list_)
+        delete table_list_;
 
 }
 
-bool SQLessDB_db1::exists() {
+bool SQLessDB_TaskList::exists() {
     return true;
 }
 
-void SQLessDB_db1::drop() {
+void SQLessDB_TaskList::drop() {
 
 }
 
-bool SQLessDB_db1::execQuery(const std::string& sql_stmt) {
+bool SQLessDB_TaskList::execQuery(const std::string& sql_stmt) {
     use();
     return sqlite3_exec(conn_->handle(), sql_stmt.c_str(), NULL, NULL, NULL) == SQLITE_OK;
 }
 
-bool SQLessDB_db1::create() {
+bool SQLessDB_TaskList::create() {
     return true;
 }
 
-bool SQLessDB_db1::use() {
+bool SQLessDB_TaskList::use() {
     return true;
 }
 
-bool SQLessDB_db1::has_table_tb1() {
-    std::string sql = "SELECT name FROM sqlite_master WHERE type = \"table\" AND name = \"tb1\";";
+bool SQLessDB_TaskList::has_table_list() {
+    std::string sql = "SELECT name FROM sqlite_master WHERE type = \"table\" AND name = \"list\";";
 
     sqlite3_stmt* stmt = NULL;
     if (sqlite3_prepare_v2(conn_->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK) {
@@ -120,99 +120,251 @@ bool SQLessDB_db1::has_table_tb1() {
     return exists;
 }
 
-SQLessTable_tb1* SQLessDB_db1::table_tb1() {
-    if (!table_tb1_)
-        table_tb1_ = new SQLessTable_tb1(this);
+SQLessTable_list* SQLessDB_TaskList::table_list() {
+    if (!table_list_)
+        table_list_ = new SQLessTable_list(this);
 
-    return table_tb1_;
+    return table_list_;
 }
 
-const char SQLessTable_tb1::kName[] = "tb1";
-const char SQLessTable_tb1::kDescription[] = "a test table";
+const char SQLessTable_list::kName[] = "list";
+const char SQLessTable_list::kDescription[] = "a test table";
 
-SQLessTable_tb1::SQLessTable_tb1(SQLessDB_db1* db)
+SQLessTable_list::SQLessTable_list(SQLessDB_TaskList* db)
     :db_(db) {
     if (!exists())
         create();
 }
 
-SQLessTable_tb1::~SQLessTable_tb1() {
+SQLessTable_list::~SQLessTable_list() {
 }
 
-bool SQLessTable_tb1::exists() {
-    return db_->has_table_tb1();
+bool SQLessTable_list::exists() {
+    return db_->has_table_list();
 }
 
-bool SQLessTable_tb1::create() {
-    return db_->execQuery("CREATE TABLE tb1 (col1 INTEGER PRIMARY_KEY AUTOINCREMENT, col2 REAL DEFAULT 0, col3 TEXT DEFAULT 'hahaha', col4 BLOB, );");
+bool SQLessTable_list::create() {
+    return db_->execQuery("CREATE TABLE list (task_id TEXT PRIMARY_KEY, task_status INTEGER, task_db TEXT, task_option TEXT, task_donepages INTEGER, task_timecost TEXT, task_createtime TEXT, task_report TEXT, task_remote_id TEXT, plan_starttime INTEGER, plan_lasttime INTEGER, plan_peroid INTEGER, plan_canbeadd INTEGER, hash_csv_path TEXT, hash_csv_hash TEXT, diskusage INTEGER, task_file TEXT, );");
 }
 
-bool SQLessTable_tb1::drop() {
-    return db_->execQuery("DROP TABLE IF EXISTS \"tb1\";");
+bool SQLessTable_list::drop() {
+    return db_->execQuery("DROP TABLE IF EXISTS \"list\";");
 }
 
-int SQLessTable_tb1::row_count() {
+int SQLessTable_list::row_count() {
     //TODO: 计算表行数
     return 0;
 }
 
-SQLessTable_tb1::InsertParam::InsertParam():
-    col1_(0),
-    has_col1_(false),
-    col2_(0),
-    has_col2_(false),
-    has_col3_(false),
-    has_col4_(false) {
+SQLessTable_list::InsertParam::InsertParam():
+    has_task_id_(false),
+    task_status_(0),
+    has_task_status_(false),
+    has_task_db_(false),
+    has_task_option_(false),
+    task_donepages_(0),
+    has_task_donepages_(false),
+    has_task_timecost_(false),
+    has_task_createtime_(false),
+    has_task_report_(false),
+    has_task_remote_id_(false),
+    plan_starttime_(0),
+    has_plan_starttime_(false),
+    plan_lasttime_(0),
+    has_plan_lasttime_(false),
+    plan_peroid_(0),
+    has_plan_peroid_(false),
+    plan_canbeadd_(0),
+    has_plan_canbeadd_(false),
+    has_hash_csv_path_(false),
+    has_hash_csv_hash_(false),
+    diskusage_(0),
+    has_diskusage_(false),
+    has_task_file_(false) {
 }
 
-SQLessTable_tb1::InsertParam::~InsertParam() {
+SQLessTable_list::InsertParam::~InsertParam() {
 }
 
-void SQLessTable_tb1::InsertParam::set_col1(int i) {
-    col1_ = i;
-    has_col1_ = true;
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_id(const std::string& i) {
+    task_id_ = i;
+    has_task_id_ = true;
+    return *this;
 }
 
-void SQLessTable_tb1::InsertParam::set_col2(double i) {
-    col2_ = i;
-    has_col2_ = true;
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_status(int i) {
+    task_status_ = i;
+    has_task_status_ = true;
+    return *this;
 }
 
-void SQLessTable_tb1::InsertParam::set_col3(const std::string& i) {
-    col3_ = i;
-    has_col3_ = true;
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_db(const std::string& i) {
+    task_db_ = i;
+    has_task_db_ = true;
+    return *this;
 }
 
-void SQLessTable_tb1::InsertParam::set_col4(const std::string& i) {
-    col4_ = i;
-    has_col4_ = true;
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_option(const std::string& i) {
+    task_option_ = i;
+    has_task_option_ = true;
+    return *this;
 }
 
-bool SQLessTable_tb1::insert(const InsertParam& param) {
-    std::string sql = "INSERT INTO tb1 (";
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_donepages(int i) {
+    task_donepages_ = i;
+    has_task_donepages_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_timecost(const std::string& i) {
+    task_timecost_ = i;
+    has_task_timecost_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_createtime(const std::string& i) {
+    task_createtime_ = i;
+    has_task_createtime_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_report(const std::string& i) {
+    task_report_ = i;
+    has_task_report_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_remote_id(const std::string& i) {
+    task_remote_id_ = i;
+    has_task_remote_id_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_starttime(int i) {
+    plan_starttime_ = i;
+    has_plan_starttime_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_lasttime(int i) {
+    plan_lasttime_ = i;
+    has_plan_lasttime_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_peroid(int i) {
+    plan_peroid_ = i;
+    has_plan_peroid_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_canbeadd(int i) {
+    plan_canbeadd_ = i;
+    has_plan_canbeadd_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_hash_csv_path(const std::string& i) {
+    hash_csv_path_ = i;
+    has_hash_csv_path_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_hash_csv_hash(const std::string& i) {
+    hash_csv_hash_ = i;
+    has_hash_csv_hash_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_diskusage(int i) {
+    diskusage_ = i;
+    has_diskusage_ = true;
+    return *this;
+}
+
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_file(const std::string& i) {
+    task_file_ = i;
+    has_task_file_ = true;
+    return *this;
+}
+
+bool SQLessTable_list::insert(const InsertParam& param) {
+    std::string sql = "INSERT INTO list (";
     std::string fields;
-    if (param.has_col1_)
-        fields += "col1, ";
-    if (param.has_col2_)
-        fields += "col2, ";
-    if (param.has_col3_)
-        fields += "col3, ";
-    if (param.has_col4_)
-        fields += "col4, ";
+    if (param.has_task_id_)
+        fields += "task_id, ";
+    if (param.has_task_status_)
+        fields += "task_status, ";
+    if (param.has_task_db_)
+        fields += "task_db, ";
+    if (param.has_task_option_)
+        fields += "task_option, ";
+    if (param.has_task_donepages_)
+        fields += "task_donepages, ";
+    if (param.has_task_timecost_)
+        fields += "task_timecost, ";
+    if (param.has_task_createtime_)
+        fields += "task_createtime, ";
+    if (param.has_task_report_)
+        fields += "task_report, ";
+    if (param.has_task_remote_id_)
+        fields += "task_remote_id, ";
+    if (param.has_plan_starttime_)
+        fields += "plan_starttime, ";
+    if (param.has_plan_lasttime_)
+        fields += "plan_lasttime, ";
+    if (param.has_plan_peroid_)
+        fields += "plan_peroid, ";
+    if (param.has_plan_canbeadd_)
+        fields += "plan_canbeadd, ";
+    if (param.has_hash_csv_path_)
+        fields += "hash_csv_path, ";
+    if (param.has_hash_csv_hash_)
+        fields += "hash_csv_hash, ";
+    if (param.has_diskusage_)
+        fields += "diskusage, ";
+    if (param.has_task_file_)
+        fields += "task_file, ";
 
 
     sql += TrimRight(fields, " ,");
     sql += ") VALUES (";
 
     fields.clear();
-    if (param.has_col1_)
-        fields += "@col1, ";
-    if (param.has_col2_)
-        fields += "@col2, ";
-    if (param.has_col3_)
-        fields += "@col3, ";
-    if (param.has_col4_)
-        fields += "@col4, ";
+    if (param.has_task_id_)
+        fields += "@task_id, ";
+    if (param.has_task_status_)
+        fields += "@task_status, ";
+    if (param.has_task_db_)
+        fields += "@task_db, ";
+    if (param.has_task_option_)
+        fields += "@task_option, ";
+    if (param.has_task_donepages_)
+        fields += "@task_donepages, ";
+    if (param.has_task_timecost_)
+        fields += "@task_timecost, ";
+    if (param.has_task_createtime_)
+        fields += "@task_createtime, ";
+    if (param.has_task_report_)
+        fields += "@task_report, ";
+    if (param.has_task_remote_id_)
+        fields += "@task_remote_id, ";
+    if (param.has_plan_starttime_)
+        fields += "@plan_starttime, ";
+    if (param.has_plan_lasttime_)
+        fields += "@plan_lasttime, ";
+    if (param.has_plan_peroid_)
+        fields += "@plan_peroid, ";
+    if (param.has_plan_canbeadd_)
+        fields += "@plan_canbeadd, ";
+    if (param.has_hash_csv_path_)
+        fields += "@hash_csv_path, ";
+    if (param.has_hash_csv_hash_)
+        fields += "@hash_csv_hash, ";
+    if (param.has_diskusage_)
+        fields += "@diskusage, ";
+    if (param.has_task_file_)
+        fields += "@task_file, ";
 
 
     sql += TrimRight(fields, " ,");
@@ -222,14 +374,40 @@ bool SQLessTable_tb1::insert(const InsertParam& param) {
     if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
         return false;
 
-    if (param.has_col1_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@col1"), param.col1_);
-    if (param.has_col2_)
-        sqlite3_bind_double(stmt, sqlite3_bind_parameter_index(stmt, "@col2"), param.col2_);
-    if (param.has_col3_)
-        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col3"), param.col3_.c_str(), param.col3_.length(), SQLITE_STATIC);
-    if (param.has_col4_)
-        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col4"), param.col4_.c_str(), param.col4_.length(), SQLITE_STATIC);
+    if (param.has_task_id_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_id"), param.task_id_.c_str(), param.task_id_.length(), SQLITE_STATIC);
+    if (param.has_task_status_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@task_status"), param.task_status_);
+    if (param.has_task_db_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_db"), param.task_db_.c_str(), param.task_db_.length(), SQLITE_STATIC);
+    if (param.has_task_option_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_option"), param.task_option_.c_str(), param.task_option_.length(), SQLITE_STATIC);
+    if (param.has_task_donepages_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@task_donepages"), param.task_donepages_);
+    if (param.has_task_timecost_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_timecost"), param.task_timecost_.c_str(), param.task_timecost_.length(), SQLITE_STATIC);
+    if (param.has_task_createtime_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_createtime"), param.task_createtime_.c_str(), param.task_createtime_.length(), SQLITE_STATIC);
+    if (param.has_task_report_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_report"), param.task_report_.c_str(), param.task_report_.length(), SQLITE_STATIC);
+    if (param.has_task_remote_id_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_remote_id"), param.task_remote_id_.c_str(), param.task_remote_id_.length(), SQLITE_STATIC);
+    if (param.has_plan_starttime_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_starttime"), param.plan_starttime_);
+    if (param.has_plan_lasttime_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_lasttime"), param.plan_lasttime_);
+    if (param.has_plan_peroid_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_peroid"), param.plan_peroid_);
+    if (param.has_plan_canbeadd_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_canbeadd"), param.plan_canbeadd_);
+    if (param.has_hash_csv_path_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@hash_csv_path"), param.hash_csv_path_.c_str(), param.hash_csv_path_.length(), SQLITE_STATIC);
+    if (param.has_hash_csv_hash_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@hash_csv_hash"), param.hash_csv_hash_.c_str(), param.hash_csv_hash_.length(), SQLITE_STATIC);
+    if (param.has_diskusage_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@diskusage"), param.diskusage_);
+    if (param.has_task_file_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_file"), param.task_file_.c_str(), param.task_file_.length(), SQLITE_STATIC);
 
 
     bool succ = sqlite3_step(stmt) == SQLITE_DONE;
@@ -239,40 +417,84 @@ bool SQLessTable_tb1::insert(const InsertParam& param) {
     return succ;
 }
 
-SQLessTable_tb1::SelectParam::SelectParam():
-    col1_(false),
-    col2_(false),
-    col3_(false),
-    col4_(false) {
+SQLessTable_list::SelectParam::SelectParam():
+    task_id_(false),
+    task_status_(false),
+    task_db_(false),
+    task_option_(false),
+    task_donepages_(false),
+    task_timecost_(false),
+    task_createtime_(false),
+    task_report_(false),
+    task_remote_id_(false),
+    plan_starttime_(false),
+    plan_lasttime_(false),
+    plan_peroid_(false),
+    plan_canbeadd_(false),
+    hash_csv_path_(false),
+    hash_csv_hash_(false),
+    diskusage_(false),
+    task_file_(false) {
 }
 
-SQLessTable_tb1::SelectParam::~SelectParam() {
+SQLessTable_list::SelectParam::~SelectParam() {
 }
 
-SQLessTable_tb1::SelectResult::SelectResult():
-    col1_(0),
-    col2_(0),
+SQLessTable_list::SelectResult::SelectResult():
+    task_status_(0),
+    task_donepages_(0),
+    plan_starttime_(0),
+    plan_lasttime_(0),
+    plan_peroid_(0),
+    plan_canbeadd_(0),
+    diskusage_(0),
     stmt_(NULL) {
 }
 
-SQLessTable_tb1::SelectResult::~SelectResult() {
+SQLessTable_list::SelectResult::~SelectResult() {
 }
 
-bool SQLessTable_tb1::select(const SelectParam& param, SelectResult* result) {
+bool SQLessTable_list::select(const SelectParam& param, SelectResult* result) {
     std::string sql = "SELECT ";
     std::string fields;
-    if (param.col1_)
-        fields += "col1, ";
-    if (param.col2_)
-        fields += "col2, ";
-    if (param.col3_)
-        fields += "col3, ";
-    if (param.col4_)
-        fields += "col4, ";
+    if (param.task_id_)
+        fields += "task_id, ";
+    if (param.task_status_)
+        fields += "task_status, ";
+    if (param.task_db_)
+        fields += "task_db, ";
+    if (param.task_option_)
+        fields += "task_option, ";
+    if (param.task_donepages_)
+        fields += "task_donepages, ";
+    if (param.task_timecost_)
+        fields += "task_timecost, ";
+    if (param.task_createtime_)
+        fields += "task_createtime, ";
+    if (param.task_report_)
+        fields += "task_report, ";
+    if (param.task_remote_id_)
+        fields += "task_remote_id, ";
+    if (param.plan_starttime_)
+        fields += "plan_starttime, ";
+    if (param.plan_lasttime_)
+        fields += "plan_lasttime, ";
+    if (param.plan_peroid_)
+        fields += "plan_peroid, ";
+    if (param.plan_canbeadd_)
+        fields += "plan_canbeadd, ";
+    if (param.hash_csv_path_)
+        fields += "hash_csv_path, ";
+    if (param.hash_csv_hash_)
+        fields += "hash_csv_hash, ";
+    if (param.diskusage_)
+        fields += "diskusage, ";
+    if (param.task_file_)
+        fields += "task_file, ";
 
 
     sql += TrimRight(fields, " ,");
-    sql += " FROM tb1";
+    sql += " FROM list";
 
     if (!param.condition_.empty()) {
         sql += " WHERE ";
@@ -291,7 +513,7 @@ bool SQLessTable_tb1::select(const SelectParam& param, SelectResult* result) {
     return true;
 }
 
-bool SQLessTable_tb1::SelectResult::getRow() {
+bool SQLessTable_list::SelectResult::getRow() {
     if (!stmt_)
         return false;
 
@@ -303,73 +525,251 @@ bool SQLessTable_tb1::SelectResult::getRow() {
 
     int _columns = sqlite3_column_count(stmt_);
 
-    bool col1 = param_.col1_;
-    bool col2 = param_.col2_;
-    bool col3 = param_.col3_;
-    bool col4 = param_.col4_;
+    bool task_id = param_.task_id_;
+    bool task_status = param_.task_status_;
+    bool task_db = param_.task_db_;
+    bool task_option = param_.task_option_;
+    bool task_donepages = param_.task_donepages_;
+    bool task_timecost = param_.task_timecost_;
+    bool task_createtime = param_.task_createtime_;
+    bool task_report = param_.task_report_;
+    bool task_remote_id = param_.task_remote_id_;
+    bool plan_starttime = param_.plan_starttime_;
+    bool plan_lasttime = param_.plan_lasttime_;
+    bool plan_peroid = param_.plan_peroid_;
+    bool plan_canbeadd = param_.plan_canbeadd_;
+    bool hash_csv_path = param_.hash_csv_path_;
+    bool hash_csv_hash = param_.hash_csv_hash_;
+    bool diskusage = param_.diskusage_;
+    bool task_file = param_.task_file_;
 
 
     for (int i = 0; i < _columns; i++) {
-        if (col1) {
-            col1_ = sqlite3_column_int(stmt_, i);
-            col1 = false;
-        } else if (col2) {
-            col2_ = sqlite3_column_double(stmt_, i);
-            col2 = false;
-        } else if (col3) {
-            col3_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
-            col3 = false;
-        } else if (col4) {
-            col4_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
-            col4 = false;
+        if (task_id) {
+            task_id_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_id = false;
+        } else if (task_status) {
+            task_status_ = sqlite3_column_int(stmt_, i);
+            task_status = false;
+        } else if (task_db) {
+            task_db_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_db = false;
+        } else if (task_option) {
+            task_option_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_option = false;
+        } else if (task_donepages) {
+            task_donepages_ = sqlite3_column_int(stmt_, i);
+            task_donepages = false;
+        } else if (task_timecost) {
+            task_timecost_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_timecost = false;
+        } else if (task_createtime) {
+            task_createtime_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_createtime = false;
+        } else if (task_report) {
+            task_report_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_report = false;
+        } else if (task_remote_id) {
+            task_remote_id_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_remote_id = false;
+        } else if (plan_starttime) {
+            plan_starttime_ = sqlite3_column_int(stmt_, i);
+            plan_starttime = false;
+        } else if (plan_lasttime) {
+            plan_lasttime_ = sqlite3_column_int(stmt_, i);
+            plan_lasttime = false;
+        } else if (plan_peroid) {
+            plan_peroid_ = sqlite3_column_int(stmt_, i);
+            plan_peroid = false;
+        } else if (plan_canbeadd) {
+            plan_canbeadd_ = sqlite3_column_int(stmt_, i);
+            plan_canbeadd = false;
+        } else if (hash_csv_path) {
+            hash_csv_path_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            hash_csv_path = false;
+        } else if (hash_csv_hash) {
+            hash_csv_hash_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            hash_csv_hash = false;
+        } else if (diskusage) {
+            diskusage_ = sqlite3_column_int(stmt_, i);
+            diskusage = false;
+        } else if (task_file) {
+            task_file_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
+            task_file = false;
         } 
     }
 
     return true;
 }
 
-SQLessTable_tb1::UpdateParam::UpdateParam():
-    col1_(0),
-    has_col1_(false),
-    col2_(0),
-    has_col2_(false),
-    has_col3_(false),
-    has_col4_(false) {
+SQLessTable_list::UpdateParam::UpdateParam():
+    has_task_id_(false),
+    task_status_(0),
+    has_task_status_(false),
+    has_task_db_(false),
+    has_task_option_(false),
+    task_donepages_(0),
+    has_task_donepages_(false),
+    has_task_timecost_(false),
+    has_task_createtime_(false),
+    has_task_report_(false),
+    has_task_remote_id_(false),
+    plan_starttime_(0),
+    has_plan_starttime_(false),
+    plan_lasttime_(0),
+    has_plan_lasttime_(false),
+    plan_peroid_(0),
+    has_plan_peroid_(false),
+    plan_canbeadd_(0),
+    has_plan_canbeadd_(false),
+    has_hash_csv_path_(false),
+    has_hash_csv_hash_(false),
+    diskusage_(0),
+    has_diskusage_(false),
+    has_task_file_(false) {
 }
 
-SQLessTable_tb1::UpdateParam::~UpdateParam() {
+SQLessTable_list::UpdateParam::~UpdateParam() {
 }
 
-void SQLessTable_tb1::UpdateParam::set_col1(int i) {
-    col1_ = i;
-    has_col1_ = true;
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_id(const std::string& i) {
+    task_id_ = i;
+    has_task_id_ = true;
+    return *this;
 }
 
-void SQLessTable_tb1::UpdateParam::set_col2(double i) {
-    col2_ = i;
-    has_col2_ = true;
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_status(int i) {
+    task_status_ = i;
+    has_task_status_ = true;
+    return *this;
 }
 
-void SQLessTable_tb1::UpdateParam::set_col3(const std::string& i) {
-    col3_ = i;
-    has_col3_ = true;
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_db(const std::string& i) {
+    task_db_ = i;
+    has_task_db_ = true;
+    return *this;
 }
 
-void SQLessTable_tb1::UpdateParam::set_col4(const std::string& i) {
-    col4_ = i;
-    has_col4_ = true;
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_option(const std::string& i) {
+    task_option_ = i;
+    has_task_option_ = true;
+    return *this;
 }
 
-bool SQLessTable_tb1::update(const UpdateParam& param, int* affected_rows /* = NULL */) {
-    std::string sql = "UPDATE tb1 SET ";
-    if (param.has_col1_)
-        sql += "col1=@col1, ";
-    if (param.has_col2_)
-        sql += "col2=@col2, ";
-    if (param.has_col3_)
-        sql += "col3=@col3, ";
-    if (param.has_col4_)
-        sql += "col4=@col4, ";
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_donepages(int i) {
+    task_donepages_ = i;
+    has_task_donepages_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_timecost(const std::string& i) {
+    task_timecost_ = i;
+    has_task_timecost_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_createtime(const std::string& i) {
+    task_createtime_ = i;
+    has_task_createtime_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_report(const std::string& i) {
+    task_report_ = i;
+    has_task_report_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_remote_id(const std::string& i) {
+    task_remote_id_ = i;
+    has_task_remote_id_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_starttime(int i) {
+    plan_starttime_ = i;
+    has_plan_starttime_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_lasttime(int i) {
+    plan_lasttime_ = i;
+    has_plan_lasttime_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_peroid(int i) {
+    plan_peroid_ = i;
+    has_plan_peroid_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_canbeadd(int i) {
+    plan_canbeadd_ = i;
+    has_plan_canbeadd_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_hash_csv_path(const std::string& i) {
+    hash_csv_path_ = i;
+    has_hash_csv_path_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_hash_csv_hash(const std::string& i) {
+    hash_csv_hash_ = i;
+    has_hash_csv_hash_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_diskusage(int i) {
+    diskusage_ = i;
+    has_diskusage_ = true;
+    return *this;
+}
+
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_file(const std::string& i) {
+    task_file_ = i;
+    has_task_file_ = true;
+    return *this;
+}
+
+bool SQLessTable_list::update(const UpdateParam& param, int* affected_rows /* = NULL */) {
+    std::string sql = "UPDATE list SET ";
+    if (param.has_task_id_)
+        sql += "task_id=@task_id, ";
+    if (param.has_task_status_)
+        sql += "task_status=@task_status, ";
+    if (param.has_task_db_)
+        sql += "task_db=@task_db, ";
+    if (param.has_task_option_)
+        sql += "task_option=@task_option, ";
+    if (param.has_task_donepages_)
+        sql += "task_donepages=@task_donepages, ";
+    if (param.has_task_timecost_)
+        sql += "task_timecost=@task_timecost, ";
+    if (param.has_task_createtime_)
+        sql += "task_createtime=@task_createtime, ";
+    if (param.has_task_report_)
+        sql += "task_report=@task_report, ";
+    if (param.has_task_remote_id_)
+        sql += "task_remote_id=@task_remote_id, ";
+    if (param.has_plan_starttime_)
+        sql += "plan_starttime=@plan_starttime, ";
+    if (param.has_plan_lasttime_)
+        sql += "plan_lasttime=@plan_lasttime, ";
+    if (param.has_plan_peroid_)
+        sql += "plan_peroid=@plan_peroid, ";
+    if (param.has_plan_canbeadd_)
+        sql += "plan_canbeadd=@plan_canbeadd, ";
+    if (param.has_hash_csv_path_)
+        sql += "hash_csv_path=@hash_csv_path, ";
+    if (param.has_hash_csv_hash_)
+        sql += "hash_csv_hash=@hash_csv_hash, ";
+    if (param.has_diskusage_)
+        sql += "diskusage=@diskusage, ";
+    if (param.has_task_file_)
+        sql += "task_file=@task_file, ";
 
 
     TrimRight(sql, ", ");
@@ -383,14 +783,40 @@ bool SQLessTable_tb1::update(const UpdateParam& param, int* affected_rows /* = N
     if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
         return false;
 
-    if (param.has_col1_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@col1"), param.col1_);
-    if (param.has_col2_)
-        sqlite3_bind_double(stmt, sqlite3_bind_parameter_index(stmt, "@col2"), param.col2_);
-    if (param.has_col3_)
-        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col3"), param.col3_.c_str(), param.col3_.length(), SQLITE_STATIC);
-    if (param.has_col4_)
-        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@col4"), param.col4_.c_str(), param.col4_.length(), SQLITE_STATIC);
+    if (param.has_task_id_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_id"), param.task_id_.c_str(), param.task_id_.length(), SQLITE_STATIC);
+    if (param.has_task_status_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@task_status"), param.task_status_);
+    if (param.has_task_db_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_db"), param.task_db_.c_str(), param.task_db_.length(), SQLITE_STATIC);
+    if (param.has_task_option_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_option"), param.task_option_.c_str(), param.task_option_.length(), SQLITE_STATIC);
+    if (param.has_task_donepages_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@task_donepages"), param.task_donepages_);
+    if (param.has_task_timecost_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_timecost"), param.task_timecost_.c_str(), param.task_timecost_.length(), SQLITE_STATIC);
+    if (param.has_task_createtime_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_createtime"), param.task_createtime_.c_str(), param.task_createtime_.length(), SQLITE_STATIC);
+    if (param.has_task_report_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_report"), param.task_report_.c_str(), param.task_report_.length(), SQLITE_STATIC);
+    if (param.has_task_remote_id_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_remote_id"), param.task_remote_id_.c_str(), param.task_remote_id_.length(), SQLITE_STATIC);
+    if (param.has_plan_starttime_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_starttime"), param.plan_starttime_);
+    if (param.has_plan_lasttime_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_lasttime"), param.plan_lasttime_);
+    if (param.has_plan_peroid_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_peroid"), param.plan_peroid_);
+    if (param.has_plan_canbeadd_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_canbeadd"), param.plan_canbeadd_);
+    if (param.has_hash_csv_path_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@hash_csv_path"), param.hash_csv_path_.c_str(), param.hash_csv_path_.length(), SQLITE_STATIC);
+    if (param.has_hash_csv_hash_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@hash_csv_hash"), param.hash_csv_hash_.c_str(), param.hash_csv_hash_.length(), SQLITE_STATIC);
+    if (param.has_diskusage_)
+        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@diskusage"), param.diskusage_);
+    if (param.has_task_file_)
+        sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_file"), param.task_file_.c_str(), param.task_file_.length(), SQLITE_STATIC);
 
 
     bool succ = sqlite3_step(stmt) == SQLITE_DONE;
@@ -403,8 +829,8 @@ bool SQLessTable_tb1::update(const UpdateParam& param, int* affected_rows /* = N
     return succ;
 }
 
-bool SQLessTable_tb1::remove(const std::string& condition, int* affected_rows /* = NULL */) {
-    std::string sql = "DELETE FROM tb1 ";
+bool SQLessTable_list::remove(const std::string& condition, int* affected_rows /* = NULL */) {
+    std::string sql = "DELETE FROM list ";
 
     if (!condition.empty()) {
         sql += "WHERE ";
@@ -420,7 +846,7 @@ bool SQLessTable_tb1::remove(const std::string& condition, int* affected_rows /*
     return succ;
 }
 
-bool SQLessTable_tb1::clear(int* affected_rows /* = NULL */) {
+bool SQLessTable_list::clear(int* affected_rows /* = NULL */) {
     return remove("", affected_rows);
 }
 

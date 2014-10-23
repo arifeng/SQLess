@@ -21,7 +21,7 @@ class Sqlite:
             if col.get('primary_key'):
                 sql += ' PRIMARY_KEY'
             if col.get('auto_increment'):
-                sql += ' AUTOINCREMENT'
+                sql += ' AUTO_INCREMENT'
 
             default_value = col.get('default')
             if type(default_value) == type(0):
@@ -34,7 +34,7 @@ class Sqlite:
 
             sql += ', '
 
-        sql += ');'
+        sql = sql.rstrip(',') + ');'
 
         return sql
 

@@ -263,7 +263,7 @@ $COLUMN_MEMBERS
         column_members = ''
         for col in schema['columns']:
             # void set_col1(int i);
-            column_setters += config.kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
+            column_setters += config.kIdent2 + 'InsertParam& set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
             # std::string col3_;
             column_members += config.kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
             # bool has_col3_;
@@ -308,9 +308,9 @@ $COLUMN_STATUS
         column_status = ''
         for col in schema['columns']:
             # void add_col1() { col1_ = true; }
-            column_adders += config.kIdent2 + 'void add_' + col['name'] + '() { ' + col['name'] + '_ = true; }\n'
+            column_adders += config.kIdent2 + 'SelectParam& add_' + col['name'] + '() { ' + col['name'] + '_ = true; return *this; }\n'
             # void order_by_col1(bool desc = false);
-            column_orderbys += config.kIdent2 + 'void order_by_' + col['name'] + '(bool desc = false);\n'
+            column_orderbys += config.kIdent2 + 'SelectParam& order_by_' + col['name'] + '(bool desc = false);\n'
             # bool col1_;
             column_status += config.kIdent2 + 'bool ' + col['name'] + '_;\n'
 
@@ -381,7 +381,7 @@ $COLUMN_MEMBERS
         column_members = ''
         for col in schema['columns']:
             # void set_col1(int i);
-            column_setters += config.kIdent2 + 'void set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
+            column_setters += config.kIdent2 + 'UpdateParam& set_' + col['name'] + '(' + self._SQLTypeToCPPType(col['type'], True) + ');\n'
             # std::string col3_;
             column_members += config.kIdent2 + self._SQLTypeToCPPType(col['type'], False) + ' ' + col['name'] + '_;\n'
             # bool has_col3_;
