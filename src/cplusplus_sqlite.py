@@ -262,7 +262,7 @@ int SQLessTable_$TABLE::row_count() {
             exit(1)
 
         sql_type = self.sqlgen.MapDataType(col_type)
-        if sql_type == 'INTEGER' or sql_type == 'REAL':
+        if sql_type == 'INTEGER' or sql_type == 'BIGINT' or sql_type == 'REAL':
             return '0'
 
         return ''
@@ -302,6 +302,8 @@ int SQLessTable_$TABLE::row_count() {
         rv = ''
         if stype == 'INTEGER':
             rv = 'sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@' + field + '"), param.' + field + '_);'
+        elif stype =='BIGINT':
+            rv = 'sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@' + field + '"), param.' + field + '_);'
         elif stype == 'REAL':
             rv = 'sqlite3_bind_double(stmt, sqlite3_bind_parameter_index(stmt, "@' + field + '"), param.' + field + '_);'
         elif stype == 'TEXT' or stype == 'BLOB':
@@ -485,6 +487,8 @@ $REMEMBER_COLUMNS
             rv = ''
             if stype == 'INTEGER':
                 rv = colname + '_ = sqlite3_column_int(stmt_, i);'
+            elif stype == 'BIGINT':
+                rv = colname + '_ = sqlite3_column_int64(stmt_, i);'
             elif stype == 'REAL':
                 rv = colname + '_ = sqlite3_column_double(stmt_, i);'
             elif stype == 'TEXT' or stype == 'BLOB':

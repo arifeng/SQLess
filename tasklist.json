@@ -57,12 +57,12 @@
               },
               {
                 "name": "plan_starttime",
-                "type": "integer",
+                "type": "bigint",
                 "desc": "The specified start time in millisecond since EPoch, if this is a plan"
               },
               {
                 "name": "plan_lasttime",
-                "type": "integer",
+                "type": "bigint",
                 "desc": "The specified stop time in millisecond since EPoch, if this is a plan"
               },
               {
@@ -87,7 +87,7 @@
               },
               {
                 "name": "diskusage",
-                "type": "integer",
+                "type": "bigint",
                 "desc": "The disk usage in bytes"
               },
               {

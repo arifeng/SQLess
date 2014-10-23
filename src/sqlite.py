@@ -56,12 +56,15 @@ class Sqlite:
 
     def MapDataType(self, t):
         integer_alias = ['integer', 'INTEGER', 'int', 'INT']
+        bigint_alias = ['bigint', 'BIGINT', 'largeint', 'LARGEINT']
         real_alias = ['real', 'REAL', 'float', 'FLOAT', 'double', 'DOUBLE']
         text_alias = ['text', 'TEXT', 'char', 'varchar', 'text']
         blob_alias = ['blob', 'BLOB', 'BINARY']
 
         if t in integer_alias:
             col_type = 'INTEGER'
+        elif t in bigint_alias:
+            col_type = 'BIGINT'
         elif t in real_alias:
             col_type = 'REAL'
         elif t in text_alias:

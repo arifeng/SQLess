@@ -33,7 +33,7 @@ class CPlusPlus:
 
     def _ForwardDeclare(self):
         '''所有数据库类、表类的前置声明'''
-        fd = ''
+        fd = '\n'
         for database in self.schema['databases']:
            fd += 'class ' + config.kDatabasePrefix + database['name'] + ';\n'
            for table in database['tables']:
@@ -241,6 +241,8 @@ private:
         cpp_type = ''
         if sql_type == 'INTEGER':
             cpp_type = 'int'
+        elif sql_type == 'BIGINT':
+            cpp_type = 'int64_t'
         elif sql_type == 'REAL':
             cpp_type = 'double'
         elif sql_type == 'TEXT' or sql_type == 'BLOB':
@@ -410,8 +412,8 @@ $COLUMN_MEMBERS
 #ifndef SQLess_$UUID_H
 #define SQLess_$UUID_H
 
+#include <cstdint>
 #include <string>
-#include <vector>
         '''
         h = h.replace('$VERSION', config.version)
         h = h.replace('$UUID', str(uuid.uuid1()).replace('-', '_'))

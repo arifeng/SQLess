@@ -170,7 +170,7 @@ bool SQLessTable_list::exists() {
 }
 
 bool SQLessTable_list::create() {
-    return db_->execQuery("CREATE TABLE list (task_id TEXT PRIMARY_KEY, task_status INTEGER, task_db TEXT, task_option TEXT, task_donepages INTEGER, task_timecost TEXT, task_createtime TEXT, task_report TEXT, task_remote_id TEXT, plan_starttime INTEGER, plan_lasttime INTEGER, plan_period INTEGER, plan_canbeadd INTEGER, hash_csv_path TEXT, hash_csv_hash TEXT, diskusage INTEGER, task_file TEXT);");
+    return db_->execQuery("CREATE TABLE list (task_id TEXT PRIMARY_KEY, task_status INTEGER, task_db TEXT, task_option TEXT, task_donepages INTEGER, task_timecost TEXT, task_createtime TEXT, task_report TEXT, task_remote_id TEXT, plan_starttime BIGINT, plan_lasttime BIGINT, plan_period INTEGER, plan_canbeadd INTEGER, hash_csv_path TEXT, hash_csv_hash TEXT, diskusage BIGINT, task_file TEXT);");
 }
 
 bool SQLessTable_list::drop() {
@@ -266,13 +266,13 @@ SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_task_remote_id
     return *this;
 }
 
-SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_starttime(int i) {
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_starttime(int64_t i) {
     plan_starttime_ = i;
     has_plan_starttime_ = true;
     return *this;
 }
 
-SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_lasttime(int i) {
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_plan_lasttime(int64_t i) {
     plan_lasttime_ = i;
     has_plan_lasttime_ = true;
     return *this;
@@ -302,7 +302,7 @@ SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_hash_csv_hash(
     return *this;
 }
 
-SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_diskusage(int i) {
+SQLessTable_list::InsertParam& SQLessTable_list::InsertParam::set_diskusage(int64_t i) {
     diskusage_ = i;
     has_diskusage_ = true;
     return *this;
@@ -419,9 +419,9 @@ bool SQLessTable_list::insert(const InsertParam& param) {
     if (param.has_task_remote_id_)
         sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_remote_id"), param.task_remote_id_.c_str(), param.task_remote_id_.length(), SQLITE_STATIC);
     if (param.has_plan_starttime_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_starttime"), param.plan_starttime_);
+        sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@plan_starttime"), param.plan_starttime_);
     if (param.has_plan_lasttime_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_lasttime"), param.plan_lasttime_);
+        sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@plan_lasttime"), param.plan_lasttime_);
     if (param.has_plan_period_)
         sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_period"), param.plan_period_);
     if (param.has_plan_canbeadd_)
@@ -431,7 +431,7 @@ bool SQLessTable_list::insert(const InsertParam& param) {
     if (param.has_hash_csv_hash_)
         sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@hash_csv_hash"), param.hash_csv_hash_.c_str(), param.hash_csv_hash_.length(), SQLITE_STATIC);
     if (param.has_diskusage_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@diskusage"), param.diskusage_);
+        sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@diskusage"), param.diskusage_);
     if (param.has_task_file_)
         sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_file"), param.task_file_.c_str(), param.task_file_.length(), SQLITE_STATIC);
 
@@ -724,10 +724,10 @@ bool SQLessTable_list::SelectResult::getRow() {
             task_remote_id_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
             task_remote_id = false;
         } else if (plan_starttime) {
-            plan_starttime_ = sqlite3_column_int(stmt_, i);
+            plan_starttime_ = sqlite3_column_int64(stmt_, i);
             plan_starttime = false;
         } else if (plan_lasttime) {
-            plan_lasttime_ = sqlite3_column_int(stmt_, i);
+            plan_lasttime_ = sqlite3_column_int64(stmt_, i);
             plan_lasttime = false;
         } else if (plan_period) {
             plan_period_ = sqlite3_column_int(stmt_, i);
@@ -742,12 +742,12 @@ bool SQLessTable_list::SelectResult::getRow() {
             hash_csv_hash_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
             hash_csv_hash = false;
         } else if (diskusage) {
-            diskusage_ = sqlite3_column_int(stmt_, i);
+            diskusage_ = sqlite3_column_int64(stmt_, i);
             diskusage = false;
         } else if (task_file) {
             task_file_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));
             task_file = false;
-        }
+        } 
     }
 
     return true;
@@ -837,13 +837,13 @@ SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_task_remote_id
     return *this;
 }
 
-SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_starttime(int i) {
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_starttime(int64_t i) {
     plan_starttime_ = i;
     has_plan_starttime_ = true;
     return *this;
 }
 
-SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_lasttime(int i) {
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_plan_lasttime(int64_t i) {
     plan_lasttime_ = i;
     has_plan_lasttime_ = true;
     return *this;
@@ -873,7 +873,7 @@ SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_hash_csv_hash(
     return *this;
 }
 
-SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_diskusage(int i) {
+SQLessTable_list::UpdateParam& SQLessTable_list::UpdateParam::set_diskusage(int64_t i) {
     diskusage_ = i;
     has_diskusage_ = true;
     return *this;
@@ -953,9 +953,9 @@ bool SQLessTable_list::update(const UpdateParam& param, int* affected_rows /* = 
     if (param.has_task_remote_id_)
         sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_remote_id"), param.task_remote_id_.c_str(), param.task_remote_id_.length(), SQLITE_STATIC);
     if (param.has_plan_starttime_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_starttime"), param.plan_starttime_);
+        sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@plan_starttime"), param.plan_starttime_);
     if (param.has_plan_lasttime_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_lasttime"), param.plan_lasttime_);
+        sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@plan_lasttime"), param.plan_lasttime_);
     if (param.has_plan_period_)
         sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@plan_period"), param.plan_period_);
     if (param.has_plan_canbeadd_)
@@ -965,7 +965,7 @@ bool SQLessTable_list::update(const UpdateParam& param, int* affected_rows /* = 
     if (param.has_hash_csv_hash_)
         sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@hash_csv_hash"), param.hash_csv_hash_.c_str(), param.hash_csv_hash_.length(), SQLITE_STATIC);
     if (param.has_diskusage_)
-        sqlite3_bind_int(stmt, sqlite3_bind_parameter_index(stmt, "@diskusage"), param.diskusage_);
+        sqlite3_bind_int64(stmt, sqlite3_bind_parameter_index(stmt, "@diskusage"), param.diskusage_);
     if (param.has_task_file_)
         sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@task_file"), param.task_file_.c_str(), param.task_file_.length(), SQLITE_STATIC);
 
