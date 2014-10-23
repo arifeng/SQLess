@@ -34,7 +34,7 @@ class Sqlite:
 
             sql += ', '
 
-        sql = sql.rstrip(',') + ');'
+        sql = sql.rstrip(', ') + ');'
 
         return sql
 

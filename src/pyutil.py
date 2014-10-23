@@ -28,7 +28,7 @@ def ReadableFileSize(path):
         return ReadableSize(size)
     except OSError:
         return ' '
-        
+
 def ReadFile(path):
     '''读取文件内容，返回字符串'''
     try:
@@ -73,11 +73,11 @@ def copytree(src, dst, symlinks=False, ignore=None):
 def InitLog():
     '''初始化日志'''
     # logging level: DEBUG<INFO<WARNING<ERROR<CRITICAL(FATAL)
-    
+
     logfile = 'packing.log'
     if os.path.exists(logfile):
       os.remove(logfile)
-    
+
     #dirname = os.path.dirname(logfile)
     # if not os.path.exists(dirname):
     #    os.mkdir(dirname)
@@ -100,6 +100,13 @@ def InitLog():
 
     return logger
 
+def UnderScoreToCamcelCase(var):
+    ''' 将foo_bar类型风格的名称更改为FooBar'''
+    camel = ''
+    for part in var.split('_'):
+        camel += part.capitalize()
+
+    return camel
 
 def ZipFolder(dirname, zipfilename):
     filelist = []

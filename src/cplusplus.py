@@ -15,8 +15,8 @@ class CPlusPlus:
         self.impl = cplusplus_sqlite.CPlusPlusImpl(schema, sqlgen, self, savename)
 
     def Generate(self):
-        pyutil.WriteFile('../' + self.savename + '.h', self.GenerateHeaderFile())
-        pyutil.WriteFile('../' + self.savename + '.cc', self.impl.GenerateImplFile())
+        pyutil.WriteFile('../' + self.savename + '.h', '\xEF\xBB\xBF' + self.GenerateHeaderFile())
+        pyutil.WriteFile('../' + self.savename + '.cc','\xEF\xBB\xBF' + self.impl.GenerateImplFile())
 
     def GenerateHeaderFile(self):
         content = self._Header()
@@ -94,7 +94,7 @@ public:
         for database in self.schema['databases']:
             dc += config.kIdent + config.kDatabasePrefix + database['name'] + '* database_' + database['name'] + '_;\n'
 
-        dc += '\nHandle handle_;\n'
+        dc += '\n' + config.kIdent + 'Handle handle_;\n'
 
         dc += '};\n'
 
@@ -204,6 +204,8 @@ public:
     static const char kName[];
     static const char kDescription[];
 
+$COLUMN_CONSTANTS
+
 private:
     // 创建数据表
     bool create();
@@ -213,6 +215,12 @@ private:
     $DATABASE_NAME* db_;
 };
 '''
+        column_constants = ''
+        for col in schema['columns']:
+            column_constants += config.kIdent + 'static const char kCol' + pyutil.UnderScoreToCamcelCase(col['name']) + '[]; // ' + col['desc'] + '\n'
+
+        template = template.replace('$COLUMN_CONSTANTS', column_constants)
+
         template = template.replace('$TABLE_NAME', config.kTablePrefix + schema['name'])
         template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + database)
 
@@ -282,12 +290,14 @@ $COLUMN_MEMBERS
           SelectParam();
           ~SelectParam();
 
+          SelectParam&  add_all();
+
 $COLUMN_ADDERS
 
 $COLUMN_ORDERBYS
 
-        void set_condition(const std::string& cond);
-        void set_limit(int count);
+        void set_condition(const std::string& cond) { condition_ = cond; }
+        void set_limit(int count) { limit_count_ = count; }
 
       private:
         friend class $TABLE_NAME;
@@ -364,7 +374,7 @@ $COLUMN_VALUES
 
 $COLUMN_SETTERS
 
-        void set_condition(const std::string& cond);
+        void set_condition(const std::string& cond) { condition_ = cond; }
 
     private:
         friend class $TABLE_NAME;

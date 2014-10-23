@@ -3,6 +3,7 @@
 
 import config
 import cplusplus
+import pyutil
 
 class CPlusPlusImpl:
     def __init__(self, schema, sqlgen, declare, savename):
@@ -26,7 +27,8 @@ class CPlusPlusImpl:
 
     def _ImplConnect(self):
         template = '''
-SQLessConn::SQLessConn() {
+SQLessConn::SQLessConn():
+$INIT_DATABASES {
 }
 
 SQLessConn::~SQLessConn() {
@@ -37,6 +39,11 @@ $DELETE_DATABASES
 bool SQLessConn::connect(const std::string& path, const std::string& key /* = "" */) {
     if (sqlite3_open(path.c_str(), &handle_) != SQLITE_OK)
         return false;
+
+#ifdef SQLITE_HAS_CODEC
+    if (!key.empty())
+        sqlite3_key(handle_, key.c_str(), key.length());
+#endif
 
     return true;
 }
@@ -67,11 +74,14 @@ SQLessDB_$DATABASE *SQLessConn::database_$DATABASE() {
 }
 '''
 
+        init_databases = ''
         delete_databases = ''
         has_databases = ''
         get_databases = ''
         for database in self.schema['databases']:
             name = database['name']
+            #database_TaskList_(NULL)
+            init_databases += config.kIdent + 'database_' + name + '_(NULL),\n'
             #if (database_db1_)
             #    delete database_db1_;
             delete_databases += config.kIdent + 'if (database_' + name + '_)\n' + \
@@ -84,6 +94,7 @@ SQLessDB_$DATABASE *SQLessConn::database_$DATABASE() {
 
             get_databases += getter_template.replace('$DATABASE', name)
 
+        template = template.replace('$INIT_DATABASES', init_databases.rstrip(',\n'))
         template = template.replace('$DELETE_DATABASES', delete_databases)
         template = template.replace('$BEGIN_TRANS_SQL', self.sqlgen.BeginTransitionSQL())
         template = template.replace('$END_TRANS_SQL', self.sqlgen.EndTransitionSQL())
@@ -98,7 +109,8 @@ const char SQLessDB_$DB::kName[] = "$DB";
 const char SQLessDB_$DB::kDescription[] = "$DESC";
 
 SQLessDB_$DB::SQLessDB_$DB(SQLessConn* conn)
-    :conn_(conn) {
+    :conn_(conn),
+$INIT_TABLES {
 
     if (!exists())
         create();
@@ -132,15 +144,19 @@ bool SQLessDB_$DB::use() {
         template = template.replace('$DB', database['name'])
         template = template.replace('$DESC', database['desc'])
 
+        init_tables = ''
         delete_tables = ''
         table_has_and_getters = ''
         for table in database['tables']:
+            #table_list_(NULL)
+            init_tables += config.kIdent + 'table_' + table['name'] + '_(NULL),\n'
             #if (table_tb1_)
             #    delete table_tb1_;
             delete_tables += config.kIdent + 'if (table_' + table['name'] + '_)\n' + \
                              config.kIdent2 + 'delete table_' + table['name'] + '_;\n'
             table_has_and_getters += self._ImplHasTable(database['name'], table['name'])
 
+        template = template.replace('$INIT_TABLES', init_tables.rstrip(',\n'))
         template = template.replace('$DELETE_TABLES', delete_tables)
         template += table_has_and_getters
 
@@ -183,6 +199,8 @@ SQLessTable_$TABLE* SQLessDB_$DB::table_$TABLE() {
 const char SQLessTable_$TABLE::kName[] = "$TABLE";
 const char SQLessTable_$TABLE::kDescription[] = "$DESC";
 
+$COLUMN_CONSTANTS
+
 SQLessTable_$TABLE::SQLessTable_$TABLE(SQLessDB_$DATABASE* db)
     :db_(db) {
     if (!exists())
@@ -209,9 +227,16 @@ int SQLessTable_$TABLE::row_count() {
     return 0;
 }
 '''
+        column_constants = ''
+        for col in schema['columns']:
+            column_constants += 'const char SQLessTable_'  + schema['name'] + '::kCol' + pyutil.UnderScoreToCamcelCase(col['name']) + '[] = "' + col['name'] + '";\n'
+
+        template = template.replace('$COLUMN_CONSTANTS', column_constants)
+
         template = template.replace('$TABLE', schema['name'])
         template = template.replace('$DESC', schema['desc'])
         template = template.replace('$DATABASE', database)
+
         template = template.replace('$CREATE_TABLE_SQL', self.sqlgen.CreateTableSQL(schema).replace('"', '\\"'))
         template = template.replace('$DROP_TABLE_SQL', self.sqlgen.DropTableSQL(schema['name']).replace('"', '\\"'))
 
@@ -350,10 +375,34 @@ $BIND_FIELDS
         spr = '\nSQLessTable_' + schema['name'] + '::SelectParam::SelectParam():\n'
         for col in schema['columns']:
             spr += config.kIdent + col['name'] + '_(false),\n'
-        spr = spr.rstrip(',\n') + ' {\n}\n'
+        spr += config.kIdent + 'desc_(false) {\n}\n'
 
         # SelectParam 析构函数
         spr += '\nSQLessTable_' + schema['name'] + '::SelectParam::~SelectParam() {\n}\n'
+
+        # 选择所有列
+        select_all_template = '''
+SQLessTable_$TABLE::SelectParam& SQLessTable_$TABLE::SelectParam::add_all() {
+$ADD_COLUMNS
+    return *this;
+}
+'''
+
+        order_by_template = '''
+SQLessTable_$TABLE::SelectParam& SQLessTable_$TABLE::SelectParam::order_by_$COLUMN(bool desc) {
+    order_by_ = "$COLUMN";
+    desc_ = desc;
+    return *this;
+}'''
+
+        add_columns = ''
+        order_by_columns = ''
+        for col in schema['columns']:
+            add_columns += config.kIdent + col['name'] + '_ = true;\n'
+            order_by_columns += order_by_template.replace('$TABLE', schema['name']).replace('$COLUMN', col['name']) + '\n'
+
+        spr += select_all_template.replace('$TABLE', schema['name']).replace('$ADD_COLUMNS', add_columns)
+        spr += order_by_columns
 
         # SelectResult 构造函数
         spr += '\nSQLessTable_' + schema['name'] + '::SelectResult::SelectResult():\n'
@@ -526,7 +575,7 @@ bool SQLessTable_$TABLE::remove(const std::string& condition, int* affected_rows
     std::string sql = "DELETE FROM $TABLE ";
 
     if (!condition.empty()) {
-        sql += "WHERE ";
+        sql += " WHERE ";
         sql += condition;
     }
 

@@ -66,7 +66,7 @@
                 "desc": "The specified stop time in millisecond since EPoch, if this is a plan"
               },
               {
-                "name": "plan_peroid",
+                "name": "plan_period",
                 "type": "integer",
                 "desc": "the cycle of the plan"
               },
