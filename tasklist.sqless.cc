@@ -926,7 +926,7 @@ bool SQLessTable_list::update(const UpdateParam& param, int* affected_rows /* = 
     TrimRight(sql, ", ");
 
     if (!param.condition_.empty())
-        sql.append("WHERE ").append(param.condition_);
+        sql.append(" WHERE ").append(param.condition_);
 
     sql.append(";");
 
