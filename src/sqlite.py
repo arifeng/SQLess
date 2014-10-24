@@ -13,7 +13,7 @@ class Sqlite:
 
     def CreateTableSQL(self, schema, if_not_exists=False):
         if schema.get('type'):
-            return self._CreateVirtualTable(schema, if_not_exists)
+            return self._CreateVirtualTable(schema)
 
         _if_not_exists = 'IF NOT EXISTS ' if if_not_exists else ''
         sql = 'CREATE TABLE ' + _if_not_exists + schema['name'] + ' ('
@@ -52,11 +52,10 @@ class Sqlite:
         print sql
         return sql
 
-    def _CreateVirtualTable(self, schema, if_not_exists):
-        '''创建虚表，虚表不支持创建索引'''
+    def _CreateVirtualTable(self, schema):
+        '''创建虚表，虚表不支持创建索引，也不支持 IF NOT EXISTS 从句'''
         # https://www.sqlite.org/vtab.html
-        _if_not_exists = 'IF NOT EXISTS ' if if_not_exists else ''
-        sql = 'CREATE VIRTUAL TABLE ' + _if_not_exists + schema['name'] + \
+        sql = 'CREATE VIRTUAL TABLE ' + schema['name'] + \
               ' USING ' + schema['type'] + ' ('
 
         for col in schema['columns']:

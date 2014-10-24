@@ -31,6 +31,7 @@ class CPlusPlusImpl:
     def _ImplConnect(self):
         template = '''
 SQLessConn::SQLessConn():
+    handle_(NULL),
 $INIT_DATABASES {
 }
 
@@ -56,7 +57,10 @@ bool SQLessConn::isValid() {
 }
 
 void SQLessConn::close() {
-    sqlite3_close(handle_);
+    if (handle_) {
+        sqlite3_close(handle_);
+        handle_ = NULL;
+    }
 }
 
 void SQLessConn::beginTransition() {
@@ -117,14 +121,16 @@ SQLessDB_$DATABASE *SQLessConn::database_$DATABASE() {
 
     def _ImplDatabase(self, database):
         template = '''
+// $DESCRIPTION
 const char SQLessDB_$DB::kName[] = "$DB";
-const char SQLessDB_$DB::kDescription[] = "$DESC";
+
 
 SQLessDB_$DB::SQLessDB_$DB(SQLessConn* conn)
     :conn_(conn),
 $INIT_TABLES {
 
-    create();
+    if (!exists())
+        create();
 }
 
 SQLessDB_$DB::~SQLessDB_$DB() {
@@ -153,7 +159,7 @@ bool SQLessDB_$DB::use() {
 }
 '''
         template = template.replace('$DB', database['name'])
-        template = template.replace('$DESC', database['desc'])
+        template = template.replace('$DESCRIPTION', database['desc'])
 
         init_tables = ''
         delete_tables = ''
@@ -179,10 +185,8 @@ bool SQLessDB_$DB::has_table_$TABLE() {
     std::string sql = "$HAS_TABLE_SQL";
 
     sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(conn_->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK) {
-        const char* s = sqlite3_errmsg(conn_->handle());
+    if (sqlite3_prepare_v2(conn_->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
         return false;
-    }
 
     bool exists = false;
     if (sqlite3_step(stmt) == SQLITE_ROW)
@@ -207,14 +211,15 @@ SQLessTable_$TABLE* SQLessDB_$DB::table_$TABLE() {
 
     def _ImplTable(self, schema, database):
         template = '''
+// $DESCRIPTION
 const char SQLessTable_$TABLE::kName[] = "$TABLE";
-const char SQLessTable_$TABLE::kDescription[] = "$DESC";
 
 $COLUMN_CONSTANTS
 
 SQLessTable_$TABLE::SQLessTable_$TABLE(SQLessDB_$DATABASE* db)
     :db_(db) {
-    create();
+    if (!exists())
+        create();
 }
 
 SQLessTable_$TABLE::~SQLessTable_$TABLE() {
@@ -259,7 +264,7 @@ int SQLessTable_$TABLE::row_count(const std::string& condition) {
         template = template.replace('$COLUMN_CONSTANTS', column_constants)
 
         template = template.replace('$TABLE', schema['name'])
-        template = template.replace('$DESC', schema['desc'])
+        template = template.replace('$DESCRIPTION', schema['desc'])
         template = template.replace('$DATABASE', database)
 
         template = template.replace('$CREATE_TABLE_SQL', self.sqlgen.CreateTableSQL(schema, if_not_exists=True).replace('"', '\\"'))

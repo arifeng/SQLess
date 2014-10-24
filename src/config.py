@@ -1,6 +1,6 @@
 #coding: utf-8
 
-version='0.3'
+version='0.3.1'
 
 # 生成的数据库/表等类的前缀
 kDatabasePrefix = 'SQLessDB_'

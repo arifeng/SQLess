@@ -111,6 +111,7 @@ public:
 
     def _DeclareDatabase(self, schema):
         template = '''
+// $DESCRIPTION
 class $DATABASE_NAME {
 public:
     $DATABASE_NAME(SQLessConn* conn);
@@ -133,10 +134,9 @@ $TABLE_GETTERS
 
 public:
     static const char kName[];
-    static const char kDescription[];
 
 private:
-    // 创建本数据库(如果当前不存在)
+    // 创建本数据库
     bool create();
 
     // 切换到当前数据库
@@ -149,6 +149,7 @@ $TABLE_MEMBERS
 };
 '''
         template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + schema['name'])
+        template = template.replace('$DESCRIPTION', schema['desc'])
 
         table_getters = ''
         for table in schema['tables']:
@@ -165,6 +166,7 @@ $TABLE_MEMBERS
 
     def _DeclareTable(self, schema, database):
         template = '''
+// $DESCRIPTION
 class $TABLE_NAME {
 public:
     $TABLE_NAME($DATABASE_NAME* db);
@@ -214,12 +216,11 @@ $UPDATE_PARAM
 
 public:
     static const char kName[];
-    static const char kDescription[];
 
 $COLUMN_CONSTANTS
 
 private:
-    // 创建数据表(如果当前不存在)
+    // 创建数据表
     bool create();
 
 private:
@@ -233,6 +234,7 @@ private:
 
         template = template.replace('$COLUMN_CONSTANTS', column_constants)
 
+        template = template.replace('$DESCRIPTION', schema['desc'])
         template = template.replace('$TABLE_NAME', config.kTablePrefix + schema['name'])
         template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + database)
 
