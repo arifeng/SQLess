@@ -145,5 +145,5 @@ def UnzipFile(zipfilename, unziptodir):
             outfile.write(zfobj.read(name))
             outfile.close()
 
-os.chdir(GetModulePath())
-logger = InitLog()
+#os.chdir(GetModulePath())
+#logger = InitLog()

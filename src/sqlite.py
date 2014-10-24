@@ -11,10 +11,19 @@ class Sqlite:
     def CreateDatabaseSQL(self, schema):
         return 'CREATE DATABASE ' + schema['name']
 
-    def CreateTableSQL(self, schema):
-        sql = 'CREATE TABLE ' + schema['name'] + ' (';
+    def CreateTableSQL(self, schema, if_not_exists=False):
+        if schema.get('type'):
+            return self._CreateVirtualTable(schema, if_not_exists)
+
+        _if_not_exists = 'IF NOT EXISTS ' if if_not_exists else ''
+        sql = 'CREATE TABLE ' + _if_not_exists + schema['name'] + ' ('
+        index_cols = []
+
         for col in schema['columns']:
             ctype = self.MapDataType(col['type'])
+
+            if col.get('index') or col.get('indexed'):
+                index_cols.append(col['name'])
 
             sql += col['name'] + ' ' + ctype
 
@@ -34,9 +43,34 @@ class Sqlite:
 
             sql += ', '
 
-        sql = sql.rstrip(', ') + ');'
+        sql = sql.rstrip(', ') + '); '
 
+        # 为指定的列创建索引
+        for index_col in index_cols:
+            sql += self._CreateIndexSQL(schema['name'], index_col)
+
+        print sql
         return sql
+
+    def _CreateVirtualTable(self, schema, if_not_exists):
+        '''创建虚表，虚表不支持创建索引'''
+        # https://www.sqlite.org/vtab.html
+        _if_not_exists = 'IF NOT EXISTS ' if if_not_exists else ''
+        sql = 'CREATE VIRTUAL TABLE ' + _if_not_exists + schema['name'] + \
+              ' USING ' + schema['type'] + ' ('
+
+        for col in schema['columns']:
+            sql += col['name'] + ', '
+
+        sql = sql.rstrip(', ') + '); '
+
+        print sql
+        return sql
+
+    def _CreateIndexSQL(self, table, column):
+        '''创建索引'''
+        # CREATE INDEX table_column_index ON table(column);
+        return 'CREATE INDEX ' + table + '_' + column + '_index ON ' + table + '(' + column + '); '
 
     def HasTableSQL(self, table):
         ''' 数据库中是否存在指定名称的表 '''
