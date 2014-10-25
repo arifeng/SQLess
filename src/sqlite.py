@@ -20,28 +20,10 @@ class Sqlite:
         index_cols = []
 
         for col in schema['columns']:
-            ctype = self.MapDataType(col['type'])
+            sql += self._ColumnSQL(col) + ', '
 
             if col.get('index') or col.get('indexed'):
                 index_cols.append(col['name'])
-
-            sql += col['name'] + ' ' + ctype
-
-            if col.get('primary_key'):
-                sql += ' PRIMARY_KEY'
-            if col.get('auto_increment'):
-                sql += ' AUTO_INCREMENT'
-
-            default_value = col.get('default')
-            if type(default_value) == type(0):
-              sql += ' DEFAULT ' + str(default_value)
-            elif type(default_value) == type(''):
-              sql += ' DEFAULT \'' + default_value + '\''
-            elif default_value:
-              print 'unknown default value: ' + str(default_value)
-              exit(1)
-
-            sql += ', '
 
         sql = sql.rstrip(', ') + '); '
 
@@ -52,8 +34,51 @@ class Sqlite:
         print sql
         return sql
 
+    def _ColumnSQL(self, schema):
+        # col_demo INTEGER AUTO_INCREMENT UNIQUE NOT_NULL DEFAULT 0
+        ctype = self.MapDataType(schema['type'])
+        sql = schema['name'] + ' ' + ctype
+
+        # 主键
+        if schema.get('primary_key'):
+            sql += ' PRIMARY_KEY'
+
+        #  自增
+        if schema.get('auto_increment'):
+            if ctype != 'INTEGER' and ctype != 'BIGINT':
+                print 'auto increment column type must be integer or bigint !'
+                exti(1)
+            sql += ' AUTO_INCREMENT'
+
+        # 唯一约束
+        if schema.get('unique'):
+            sql += ' UNIQUE'
+
+        # 非空约束
+        if schema.get('not_null'):
+            sql += ' NOT NULL'
+
+        # 列的默认值
+        default_value = schema.get('default')
+        if type(default_value) == type(0):
+          if ctype != 'INTEGER' and ctype != 'BIGINT':
+            print 'Not an integer/bitint type but has a integer default value'
+            exit(1)
+          sql += ' DEFAULT ' + str(default_value)
+        elif type(default_value) == type(''):
+          if ctype != 'TEXT':
+            print 'Not an text type but has a text default value'
+            exit(1)
+          sql += ' DEFAULT \'' + default_value + '\''
+        elif default_value:
+          print 'unknown default value: ' + str(default_value)
+          exit(1)
+
+        return sql
+
+
     def _CreateVirtualTable(self, schema):
-        '''创建虚表，虚表不支持创建索引，也不支持 IF NOT EXISTS 从句'''
+        ''' 创建虚表，虚表不支持创建索引，也不支持 IF NOT EXISTS 从句 '''
         # https://www.sqlite.org/vtab.html
         sql = 'CREATE VIRTUAL TABLE ' + schema['name'] + \
               ' USING ' + schema['type'] + ' ('
@@ -67,7 +92,7 @@ class Sqlite:
         return sql
 
     def _CreateIndexSQL(self, table, column):
-        '''创建索引'''
+        ''' 创建索引 '''
         # CREATE INDEX table_column_index ON table(column);
         return 'CREATE INDEX ' + table + '_' + column + '_index ON ' + table + '(' + column + '); '
 
@@ -75,16 +100,24 @@ class Sqlite:
         ''' 数据库中是否存在指定名称的表 '''
         return 'SELECT name FROM sqlite_master WHERE type = "table" AND name = "' + table + '";'
 
-
     def DropTableSQL(self, table):
         ''' 删除数据表 '''
         return 'DROP TABLE IF EXISTS "' + table + '";'
 
+    def HasColumnSQL(self, table, column):
+        ''' 列是否存在 '''
+        return 'SELECT ' + column + ' FROM ' + table + ' LIMIT 0;'
+
+    def AddColumnSQL(self, table, schema):
+        ''' 添加新的一列 '''
+        return 'ALTER TABLE ' +  table + ' ADD ' + self._ColumnSQL(schema) + ';'
 
     def BeginTransitionSQL(self):
+        ''' 开始事务 '''
         return 'BEGIN;'
 
     def EndTransitionSQL(self):
+        ''' 提交事务 '''
         return 'COMMIT;'
 
     def MapDataType(self, t):

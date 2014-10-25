@@ -41,6 +41,8 @@ class CPlusPlus:
            fd += 'class ' + config.kDatabasePrefix + database['name'] + ';\n'
            for table in database['tables']:
                fd += 'class ' + config.kTablePrefix + table['name'] + ';\n'
+               for col in table['columns']:
+                fd += 'class ' + config.kColumnPrefix + table['name'] + '_' + col['name'] + ';\n'
 
         return fd;
 
@@ -190,7 +192,9 @@ public:
 $INSERT_PARAM
 
     // 插入操作
-    bool insert(const InsertParam& param);
+    // 如果表中有 INTEGER PRIMARY KEY 的列，通过 inserted_row_id 可以获取到刚插入的行的该列的值
+    // 如果没有此种类型的列，sqlite将使用 _ROWID_ 代替
+    bool insert(const InsertParam& param, int64_t* inserted_row_id = NULL);
 
     // 查询参数
 $SELECT_PARAM
@@ -214,10 +218,11 @@ $UPDATE_PARAM
     // 清空所有记录
     bool clear(int* affected_rows = NULL);
 
+    // 获取列
+$COLUMN_GETTERS
+
 public:
     static const char kName[];
-
-$COLUMN_CONSTANTS
 
 private:
     // 创建数据表
@@ -226,13 +231,21 @@ private:
 private:
     // 所属数据库
     $DATABASE_NAME* db_;
+
+    //列成员
+$COLUMN_MEMBERS
 };
 '''
-        column_constants = ''
+        # FIXME：废弃的
+        column_members = ''
+        column_getters = ''
         for col in schema['columns']:
-            column_constants += config.kIdent + 'static const char kCol' + pyutil.UnderScoreToCamcelCase(col['name']) + '[]; // ' + col['desc'] + '\n'
+            col_class = config.kColumnPrefix + schema['name'] + '_' + col['name']   # SQLessColumn_table_column
+            column_getters += config.kIdent + col_class + '* column_' + col['name'] + '();\n'
+            column_members += config.kIdent + col_class + '* column_' + col['name'] + '_;\n'
 
-        template = template.replace('$COLUMN_CONSTANTS', column_constants)
+        template = template.replace('$COLUMN_MEMBERS', column_members)
+        template = template.replace('$COLUMN_GETTERS', column_getters)
 
         template = template.replace('$DESCRIPTION', schema['desc'])
         template = template.replace('$TABLE_NAME', config.kTablePrefix + schema['name'])
@@ -242,6 +255,9 @@ private:
         template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(schema, schema['name']))
         template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(schema, schema['name']))
         template = template.replace('$UPDATE_PARAM', self._DeclareUpdateParam(schema, schema['name']))
+
+        for col in schema['columns']:
+            template += self._DeclareColumn(schema['name'], col)
 
         return template
 
@@ -420,6 +436,78 @@ $COLUMN_MEMBERS
         return template
 
 
+    def _DeclareColumn(self, table, schema):
+        template = '''
+// $DESCRIPTION
+class SQLessColumn_$TABLE_$COLUMN {
+public:
+    SQLessColumn_$TABLE_$COLUMN(SQLessTable_$TABLE* table);
+    ~SQLessColumn_$TABLE_$COLUMN();
+
+    // 获取所属的表
+    SQLessTable_$TABLE* table() { return table_; }
+
+    // 该列是否存在，如果存在 real_type 代表当前数据库里的列类型
+    // 注：通过kType获取到的是当前json描述文件里的类型，列的类型可能发生了变化
+    bool exists(SQLessColumnType* real_type = NULL);
+
+    // 创建本列
+    bool create();
+
+    // 数据库已经为主键建了索引，并且主键是唯一的
+    // 对于整数类型的主键，该列的值还会自动增长
+    bool is_primary_key() { return $IS_PRIMARY_KEY; }
+
+    // 该列是否建了索引
+    bool is_indexed() { return $IS_INDEXED; }
+
+    // 该列中的值是否唯一化
+    bool is_unique() { return $IS_UNIQUE; }
+
+    // 是否自动增加
+    bool is_auto_increment() { return $IS_AUTO_INCREMENT; }
+
+    // 是否保证非空
+    bool is_not_null() { return $IS_NOT_NULL; }
+
+public:
+    // 列名
+    static const char kName[];
+
+    // 列的类型(在schema.json文件中指定的)
+    static const char kType[];
+$DEFAULT_VALUE
+private:
+    SQLessTable_$TABLE* table_;
+};
+'''
+        is_primary_key = schema.get('primary_key')
+
+        default_value = ''
+        if 'default' in schema:
+            default_value = '\n' + config.kIdent + 'static const '
+            stype = self.sqlgen.MapDataType(schema['type'])
+            if stype == 'INTEGER' or stype == 'BIGINT':
+                default_value += self._SQLTypeToCPPType(schema['type'], False) + ' kDefault = ' + str(schema['default']) + ';\n'
+            elif stype == 'TEXT':
+                default_value += 'char kDefault[];\n'   # 在cc文件中定义
+            else:
+                print 'Default value not supported for column ' + schema['name'] + ' with type ' + schema['type']
+                exit(1)
+
+        template = template.replace('$COLUMN', schema['name'])
+        template = template.replace('$DESCRIPTION', schema['desc'])
+        template = template.replace('$TABLE', table)
+
+        template = template.replace('$IS_PRIMARY_KEY', 'true' if is_primary_key else 'false')
+        template = template.replace('$IS_INDEXED', 'true' if is_primary_key or schema.get('index') or schema.get('indexed') else 'false')
+        template = template.replace('$IS_UNIQUE', 'true' if is_primary_key or schema.get('unique') else 'false')
+        template = template.replace('$IS_AUTO_INCREMENT', 'true' if is_primary_key or schema.get('unique') else 'false')
+        template = template.replace('$IS_NOT_NULL', 'true' if is_primary_key or schema.get('not_null') else 'false')
+        template = template.replace('$DEFAULT_VALUE', default_value)
+
+        return template
+
     def _Header(self):
         h = '''// Generated by SQLess v$VERSION at $DATETIME
 // project homepage http://www.SQLess.org
@@ -430,6 +518,18 @@ $COLUMN_MEMBERS
 #include <cstdint>
 #include <string>
         '''
+
+        col_type_enum = '''
+enum SQLessColumnType {
+    kColTypeNone = 0,
+    kColTypeInteger,
+    kColTypeBigInt,
+    kColTypeReal,
+    kColTypeText,
+    kColTypeBlob
+};
+'''
+
         h = h.replace('$VERSION', config.version)
         h = h.replace("$DATETIME", time.strftime('%Y-%m-%d %X', time.localtime()))
         h = h.replace('$UUID', str(uuid.uuid1()).replace('-', '_'))
@@ -446,6 +546,8 @@ $COLUMN_MEMBERS
         # 命名空间
         if self.namespace:
             h += '\nnamespace ' + self.namespace + ' {\n'
+
+        h += col_type_enum
 
         return h
 
