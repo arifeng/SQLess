@@ -74,8 +74,8 @@ public:
     bool execQuery(const std::string& sql_stmt, std::string* result);
 
     // 事务处理
-    void beginTransition();
-    void endTransition();
+    void beginTransaction();
+    void endTransaction();
 
     // 错误处理
     int lastErrorCode();

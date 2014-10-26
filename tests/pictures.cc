@@ -1,6 +1,6 @@
-// SQLess数据库操作单元测试
-// 扫描 data/china_101_famous_places/ 目录下的所有图片，将其ID、路径、类型、大小、MD5、文件内容等
-// 存入数据库中，然后再从数据库中读取出来，通过再次计算读取出的文件内容的MD5，并和文件实际的MD5比较来判断是否成功。
+// SQLess数据库操作单元测试C++版
+// 扫描 data/china_101_famous_places/ 目录下的所有图片，将其ID、路径、类型、大小、MD5、文件内容等存入数据库中，
+// 然后再从数据库中读取出来，通过再次计算读取出的文件内容的MD5，并和文件实际的MD5比较来判断是否成功。
 
 // g++ pictures.cc pictures.sqless.cc utils/src/ccutil.cpp utils/src/cutil.c utils/gnu-md5.c -D_DEBUG -lsqlite3
 
@@ -13,6 +13,8 @@ using namespace utils;
 
 // 数据库连接全局变量
 static SQLessConn g_conn;
+
+// 图片ID
 static int g_id = 0;
 
 int write_database();
@@ -50,6 +52,7 @@ std::string compute_md5(const std::string& path, const std::string& content) {
     return (const char*)md5;
 }
 
+// 处理找到的每个文件
 int picture_file_handler(const char* path, void* arg) {
     ASSERT(g_conn.isValid());
 
@@ -113,9 +116,21 @@ int write_database() {
     VERIFY(table->column_id()->is_primary_key());
     VERIFY(table->column_path()->is_not_null());
 
+    TimeMeter t;
+
+    // 开始事务
+    g_conn.beginTransaction();
+
     // 查找所有图片并记录到数据库
     VERIFY(foreach_file("data/china_101_famous_places", picture_file_handler, 0, 0, NULL));
 
+    // 结束事务
+    g_conn.endTransaction();
+
+    // 打印耗时
+    printf("Cost time: %.3lf seconds.\n\n", t.ElapseSTillNow());
+
+    // 关闭数据库连接
     g_conn.close();
     return 1;
 }

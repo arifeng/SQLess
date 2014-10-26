@@ -63,11 +63,11 @@ void SQLessConn::close() {
     }
 }
 
-void SQLessConn::beginTransition() {
+void SQLessConn::beginTransaction() {
     sqlite3_exec(handle_, "$BEGIN_TRANS_SQL", NULL, NULL, NULL);
 }
 
-void SQLessConn::endTransition() {
+void SQLessConn::endTransaction() {
     sqlite3_exec(handle_, "$END_TRANS_SQL", NULL, NULL, NULL);
 }
 
