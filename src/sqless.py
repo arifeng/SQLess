@@ -53,7 +53,6 @@ def ParseOptions():
     return opt
 
 
-# TODO：解析命令行参数来获取数据库IDL文件、目标语言、数据库引擎、命名空间等
 if __name__ == '__main__':
     opt = ParseOptions()
 

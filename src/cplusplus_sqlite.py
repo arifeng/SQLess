@@ -670,12 +670,14 @@ $DEFAULT_VALUE
 
 SQLessColumn_$TABLE_$COLUMN::SQLessColumn_$TABLE_$COLUMN(SQLessTable_$TABLE* table):
     table_(table) {
+    if (!exists())
+        create();
 }
 
 SQLessColumn_$TABLE_$COLUMN::~SQLessColumn_$TABLE_$COLUMN() {
 }
 
-bool SQLessColumn_$TABLE_$COLUMN::exists(SQLessColumnType* real_type /* = NULL */) {
+bool SQLessColumn_$TABLE_$COLUMN::exists() {
     return table_->database()->execQuery("$HAS_COLUMN_SQL");
 }
 
@@ -722,27 +724,6 @@ std::string &TrimRight(std::string &s, const std::string &m) {
 
 }
 """
-        map_col_type_func = '''
-SQLessColumnType MapColumnType(int sqlite3_type) {
-    SQLessColumnType type = kColTypeNone;
-    switch (sqlite3_type) {
-    case SQLITE_INTEGER:
-        type = kColTypeBigInt;
-        break;
-    case SQLITE_FLOAT:
-        type = kColTypeReal;
-        break;
-    case SQLITE_TEXT:
-        type = kColTypeText;
-        break;
-    case SQLITE_BLOB:
-        type = kColTypeBlob;
-        break;
-    }
-    return type;
-}
-'''
-
         template = template.replace('$VERSION', config.version)
         template = template.replace('$DATETIME', time.strftime('%Y-%m-%d %X', time.localtime()))
         template = template.replace('$SAVENAME', os.path.basename(self.savename))
@@ -750,8 +731,6 @@ SQLessColumnType MapColumnType(int sqlite3_type) {
         # 命名空间
         if self.namespace:
             template += '\nnamespace ' + self.namespace + ' {\n'
-
-        template += map_col_type_func;
 
         return template
 

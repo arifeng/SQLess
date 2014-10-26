@@ -121,6 +121,9 @@ public:
 
     bool exists();
 
+    // 创建本数据库
+    bool create();
+
     // 删除数据库
     // 将同时delete所有的数据表实例
     void drop();
@@ -138,9 +141,6 @@ public:
     static const char kName[];
 
 private:
-    // 创建本数据库
-    bool create();
-
     // 切换到当前数据库
     bool use();
 
@@ -176,6 +176,9 @@ public:
 
     // 当前数据表是否存在
     bool exists();
+
+    // 创建数据表
+    bool create();
 
     // 删除数据表
     bool drop();
@@ -223,10 +226,6 @@ $COLUMN_GETTERS
 
 public:
     static const char kName[];
-
-private:
-    // 创建数据表
-    bool create();
 
 private:
     // 所属数据库
@@ -449,7 +448,7 @@ public:
 
     // 该列是否存在，如果存在 real_type 代表当前数据库里的列类型
     // 注：通过kType获取到的是当前json描述文件里的类型，列的类型可能发生了变化
-    bool exists(SQLessColumnType* real_type = NULL);
+    bool exists();
 
     // 创建本列
     bool create();
@@ -519,17 +518,6 @@ private:
 #include <string>
         '''
 
-        col_type_enum = '''
-enum SQLessColumnType {
-    kColTypeNone = 0,
-    kColTypeInteger,
-    kColTypeBigInt,
-    kColTypeReal,
-    kColTypeText,
-    kColTypeBlob
-};
-'''
-
         h = h.replace('$VERSION', config.version)
         h = h.replace("$DATETIME", time.strftime('%Y-%m-%d %X', time.localtime()))
         h = h.replace('$UUID', str(uuid.uuid1()).replace('-', '_'))
@@ -546,8 +534,6 @@ enum SQLessColumnType {
         # 命名空间
         if self.namespace:
             h += '\nnamespace ' + self.namespace + ' {\n'
-
-        h += col_type_enum
 
         return h
 
