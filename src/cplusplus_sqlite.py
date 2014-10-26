@@ -470,7 +470,9 @@ SQLessTable_$TABLE::SelectParam& SQLessTable_$TABLE::SelectParam::order_by_$COLU
         spr += config.kIdent + 'stmt_(NULL) {\n}\n'
 
         # SelectResult 析构函数
-        spr += '\nSQLessTable_' + schema['name'] + '::SelectResult::~SelectResult() {\n}\n'
+        spr += '\nSQLessTable_' + schema['name'] + '::SelectResult::~SelectResult() {\n' + \
+                config.kIdent + 'if (stmt_)\n' + \
+                config.kIdent2 + 'sqlite3_finalize(stmt_);\n}\n'
 
         return spr
 
