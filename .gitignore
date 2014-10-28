@@ -1,8 +1,5 @@
 *.pyc
 *.log
-*.json
-*.sqless.h
-*.sqless.cc
 *.DS_Store
 *.db
 a.out

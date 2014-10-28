@@ -1,0 +1,53 @@
+{
+    "namespace": "unittest",
+    "databases": [
+      {
+        "name": "db",
+        "desc": "The database where all pictures info are stored.",
+        "tables": [
+          {
+            "name": "tb",
+            "desc": "The table where all pictures info are stored.",
+            "columns" : [
+              {
+                "name": "id",
+                "type": "int",
+                "primary_key": true,
+                "auto_increment": true,
+                "not_null": true,
+                "desc": "The Unique ID of the picture"
+              },
+              {
+                "name": "path",
+                "type": "text",
+                "desc": "the path of the picture",
+                "not_null": true
+              },
+              {
+                "name": "type",
+                "type": "text",
+                "desc": "The image type, e.g. jpg, png, gif...",
+                "default": "unknown"
+              },
+              {
+                "name": "size",
+                "type": "bigint",
+                "desc": "The size of the picture file",
+                "default": 0
+              },
+              {
+                "name": "md5",
+                "type": "text",
+                "desc": "The MD5 checksum of the picture"
+              },
+              {
+                "name": "data",
+                "type": "blob",
+                "desc": "The image file data"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+}
