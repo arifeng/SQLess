@@ -30,6 +30,9 @@ class CPlusPlus:
             content += self._DeclareDatabase(database)
             for table in database['tables']:
                 content += self._DeclareTable(table, database['name'])
+            if database.get('views'):
+                for view in database['views']:
+                    content += self._DeclareView(database, view)
 
         content += self._Footer()
         return content
@@ -38,11 +41,14 @@ class CPlusPlus:
         '''所有数据库类、表类的前置声明'''
         fd = '\n'
         for database in self.schema['databases']:
-           fd += 'class ' + config.kDatabasePrefix + database['name'] + ';\n'
-           for table in database['tables']:
-               fd += 'class ' + config.kTablePrefix + table['name'] + ';\n'
-               for col in table['columns']:
-                fd += 'class ' + config.kColumnPrefix + table['name'] + '_' + col['name'] + ';\n'
+            fd += 'class ' + config.kDatabasePrefix + database['name'] + ';\n'
+            for table in database['tables']:
+                fd += 'class ' + config.kTablePrefix + table['name'] + ';\n'
+                for col in table['columns']:
+                    fd += 'class ' + config.kColumnPrefix + table['name'] + '_' + col['name'] + ';\n'
+            if database.get('views'):
+                for view in database['views']:
+                    fd += 'class ' + config.kViewPrefix + view['name'] + ';\n'
 
         return fd;
 
@@ -136,7 +142,7 @@ public:
 
     // 指定数据表是否存在以及获取相应表
 $TABLE_GETTERS
-
+$VIEW_GETTERS
 public:
     static const char kName[];
 
@@ -148,21 +154,31 @@ private:
     SQLessConn* conn_;
 
 $TABLE_MEMBERS
+$VIEW_MEMBERS
 };
 '''
         template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + schema['name'])
         template = template.replace('$DESCRIPTION', schema['desc'])
 
         table_getters = ''
+        table_members_ = ''
         for table in schema['tables']:
             table_getters += config.kIdent + 'bool has_table_' + table['name'] + '();\n'
             table_getters += config.kIdent + config.kTablePrefix + table['name'] + '* table_' + table['name'] + '();\n'
-        template = template.replace('$TABLE_GETTERS', table_getters)
-
-        table_members_ = ''
-        for table in schema['tables']:
             table_members_ += config.kIdent + config.kTablePrefix + table['name'] + '* table_' + table['name'] + '_;\n'
+
+        view_getters = ''
+        view_members = ''
+        if schema.get('views'):
+            for view in schema['views']:
+                view_getters += config.kIdent + 'bool has_view_' + view['name'] + '();\n'
+                view_getters += config.kIdent + config.kViewPrefix + view['name'] + '* view_' + view['name'] + '();\n'
+                view_members += config.kIdent + config.kViewPrefix + view['name'] + '* view_' + view['name'] + '_;\n'
+
+        template = template.replace('$TABLE_GETTERS', table_getters)
         template = template.replace('$TABLE_MEMBERS', table_members_)
+        template = template.replace('$VIEW_GETTERS',  view_getters)
+        template = template.replace('$VIEW_MEMBERS',  view_members)
 
         return template
 
@@ -250,10 +266,10 @@ $COLUMN_MEMBERS
         template = template.replace('$TABLE_NAME', config.kTablePrefix + schema['name'])
         template = template.replace('$DATABASE_NAME', config.kDatabasePrefix + database)
 
-        template = template.replace('$INSERT_PARAM', self._DeclareInsertParam(schema, schema['name']))
-        template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(schema, schema['name']))
-        template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(schema, schema['name']))
-        template = template.replace('$UPDATE_PARAM', self._DeclareUpdateParam(schema, schema['name']))
+        template = template.replace('$INSERT_PARAM', self._DeclareInsertParam(schema, config.kTablePrefix + schema['name']))
+        template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(schema, config.kTablePrefix + schema['name']))
+        template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(schema, config.kTablePrefix + schema['name']))
+        template = template.replace('$UPDATE_PARAM', self._DeclareUpdateParam(schema, config.kTablePrefix + schema['name']))
 
         for col in schema['columns']:
             template += self._DeclareColumn(schema['name'], col)
@@ -296,7 +312,7 @@ $COLUMN_MEMBERS
     };
         '''
 
-        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', table)
 
         column_setters = ''
         column_members = ''
@@ -328,7 +344,8 @@ $COLUMN_ADDERS
 $COLUMN_ORDERBYS
 
         void set_condition(const std::string& cond) { condition_ = cond; }
-        void set_limit(int count) { limit_count_ = count; }
+        void set_limit(int count) { limit_ = count; }
+        void set_offset(int offset) { offset_ = offset; }
 
       private:
         friend class $TABLE_NAME;
@@ -338,11 +355,12 @@ $COLUMN_STATUS
         std::string condition_;
         std::string order_by_;
         bool desc_;
-        int limit_count_;
+        int limit_;
+        int offset_;
     };
         """
 
-        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', table)
 
         column_adders = ''
         column_orderbys = ''
@@ -380,7 +398,7 @@ $COLUMN_VALUES
     };
         """
 
-        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', table)
 
         column_getters = ''
         column_values = ''
@@ -417,7 +435,7 @@ $COLUMN_MEMBERS
     };
         """
 
-        template = template.replace('$TABLE_NAME', config.kTablePrefix + table)
+        template = template.replace('$TABLE_NAME', table)
 
         column_setters = ''
         column_members = ''
@@ -431,6 +449,99 @@ $COLUMN_MEMBERS
 
         template = template.replace('$COLUMN_SETTERS', column_setters)
         template = template.replace('$COLUMN_MEMBERS', column_members)
+
+        return template
+
+
+    def MockViewAsTableSchema(self, database, view):
+        ''' 将View的定义转换为相应虚拟Table的格式 '''
+        mock = {}
+        mock['name'] = view['name']
+        mock['desc'] = view['desc']
+
+        def GetTableColumn(tname, cname):
+            ''' 根据视图定义中列的属性查找相应表中的列定义 '''
+            for table in database['tables']:
+                if table['name'] == tname:
+                    for column in table['columns']:
+                        if column['name'] == cname:
+                            return column
+
+        mock_columns = []
+        for col in view['columns']:
+            mock_column = {}
+            # 如果指定了列的名称，则使用指定的名称，如同 AS 关键字
+            if col.get('name'):
+                mock_column['name'] = col['name']
+            else:
+                mock_column['name'] = col['table'] + '_' + col['column']
+            # 视图的列源自的表和表的列必须存在，否则以下语句执行将出错
+            orig_col = GetTableColumn(col['table'], col['column'])
+            mock_column['type'] = orig_col['type']
+            # 优先使用视图中的描述信息
+            if col.get('desc'):
+                mock_column['desc'] = col['desc']
+            else:
+                mock_column['desc'] = orig_col['desc']
+
+            mock_columns.append(mock_column)
+
+        mock['columns'] = mock_columns
+        return mock
+
+
+    def _DeclareView(self, db_schema, schema):
+        template = '''
+// $DESCRIPTION
+class SQLessView_$VIEW {
+public:
+    SQLessView_$VIEW(SQLessDB_$DATABASE* db);
+    ~SQLessView_$VIEW();
+
+    // 视图是否存在
+    bool exists();
+
+    // 创建视图
+    bool create(const std::string &condition);
+
+    // 删除视图
+    bool drop();
+
+    // 获取所属的数据库
+    SQLessDB_$DATABASE* database() { return db_; }
+
+    // 查询符合条件的记录数
+    // 不传参数或参数为空返回表的总行数
+    // 返回-1表示出错
+    int row_count(const std::string& condition = "");
+
+    // 查询参数
+$SELECT_PARAM
+
+
+    // 查询结果
+$SELECT_RESULT
+
+    bool select(const SelectParam& param, SelectResult* result);
+
+public:
+    static const char kName[];
+
+private:
+    SQLessDB_$DATABASE* db_;
+};
+'''
+        # 根据视图的定义模拟表的操作，重用table的 SelectParam 和 SelectResult
+        mock_schema = self.MockViewAsTableSchema(db_schema, schema)
+        view_name = config.kViewPrefix + schema['name']
+
+        template = template.replace('$VIEW', schema['name'])
+        template = template.replace('$DESCRIPTION', schema['desc'])
+        template = template.replace('$DATABASE', db_schema['name'])
+        template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(mock_schema, view_name))
+        template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(mock_schema, view_name))
+
+        print self.sqlgen.CreateViewSQL(schema)
 
         return template
 
@@ -506,6 +617,7 @@ private:
         template = template.replace('$DEFAULT_VALUE', default_value)
 
         return template
+
 
     def _Header(self):
         h = '''// Generated by SQLess v$VERSION at $DATETIME

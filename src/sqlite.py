@@ -17,6 +17,7 @@ class Sqlite:
 
         _if_not_exists = 'IF NOT EXISTS ' if if_not_exists else ''
         sql = 'CREATE TABLE ' + _if_not_exists + schema['name'] + ' ('
+
         index_cols = []
 
         for col in schema['columns']:
@@ -111,6 +112,38 @@ class Sqlite:
     def AddColumnSQL(self, table, schema):
         ''' 添加新的一列 '''
         return 'ALTER TABLE ' +  table + ' ADD ' + self._ColumnSQL(schema) + ';'
+
+    def HasViewSQL(self, view):
+        ''' 视图是否存在 '''
+        return 'SELECT name FROM sqlite_master WHERE type = "view" AND name = "' + view + '";'
+
+    def DropViewSQL(self, view):
+        ''' 删除视图 '''
+        return 'DROP VIEW ' + view
+
+    def CreateViewSQL(self, schema, temp=False):
+        ''' 创建视图，未附加任何条件限制，并以逗号结尾 '''
+        _temp = 'TEMP ' if temp else ''
+        sql = 'CREATE ' + _temp + 'VIEW ' + schema['name'] + ' AS SELECT '
+
+        tables = []
+        for col in schema['columns']:
+            table = col['table']
+            _as = ''
+            if col.get('name'):
+                _as = ' AS ' + col['name']
+            sql += table + '.' + col['column'] + _as + ', '
+            if not table in tables:
+                tables.append(table)
+
+        sql = sql.rstrip(', ') + ' FROM ';
+
+        for table in tables:
+            sql += table + ', ';
+
+        sql = sql.rstrip(', ') + ';';
+        return sql
+
 
     def BeginTransitionSQL(self):
         ''' 开始事务 '''

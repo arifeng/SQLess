@@ -24,6 +24,9 @@ class CPlusPlusImpl:
             content += self._ImplDatabase(database)
             for table in database['tables']:
                 content += self._ImplTable(table, database['name'])
+            if database.get('views'):
+                for view in database['views']:
+                    content += self._ImplView(database, view)
 
         content += self._Footer()
         return content
@@ -127,7 +130,8 @@ const char SQLessDB_$DB::kName[] = "$DB";
 
 SQLessDB_$DB::SQLessDB_$DB(SQLessConn* conn)
     :conn_(conn),
-$INIT_TABLES {
+$INIT_TABLES
+$INIT_VIEWS {
 
     if (!exists())
         create();
@@ -135,6 +139,7 @@ $INIT_TABLES {
 
 SQLessDB_$DB::~SQLessDB_$DB() {
 $DELETE_TABLES
+$DELETE_VIEWS
 }
 
 bool SQLessDB_$DB::exists() {
@@ -171,18 +176,35 @@ bool SQLessDB_$DB::use() {
             #    delete table_tb1_;
             delete_tables += config.kIdent + 'if (table_' + table['name'] + '_)\n' + \
                              config.kIdent2 + 'delete table_' + table['name'] + '_;\n'
-            table_has_and_getters += self._ImplHasTable(database['name'], table['name'])
+            table_has_and_getters += self._ImplHasTableView(database['name'], table['name'], False)
 
-        template = template.replace('$INIT_TABLES', init_tables.rstrip(',\n'))
+        init_views = ''
+        delete_views = ''
+        view_has_and_getters = ''
+        if database.get('views'):
+            for view in database['views']:
+                init_views += config.kIdent + 'view_' + view['name'] + '_(NULL),\n'
+                delete_views += config.kIdent + 'if (view_' + view['name'] + '_)\n' + \
+                                config.kIdent2 + 'delete view_' + view['name'] + '_;\n'
+                view_has_and_getters += self._ImplHasTableView(database['name'], view['name'], True)
+
+        template = template.replace('$INIT_TABLES', init_tables)
         template = template.replace('$DELETE_TABLES', delete_tables)
+        template = template.replace('$INIT_VIEWS', init_views.rstrip(',\n'))
+        template = template.replace('$DELETE_VIEWS', delete_views)
         template += table_has_and_getters
+        template += view_has_and_getters
 
         return template
 
-    def _ImplHasTable(self, database, table):
+    def _ImplHasTableView(self, database, name, is_view):
+        _type = 'view' if is_view else 'table'
+        _prefix = config.kViewPrefix if is_view else config.kTablePrefix
+        _has_sql = self.sqlgen.HasViewSQL(name) if is_view else self.sqlgen.HasTableSQL(name)
+
         template = '''
-bool SQLessDB_$DB::has_table_$TABLE() {
-    std::string sql = "$HAS_TABLE_SQL";
+bool SQLessDB_$DB::has_$TYPE_$NAME() {
+    std::string sql = "$HAS_SQL";
 
     sqlite3_stmt* stmt = NULL;
     if (sqlite3_prepare_v2(conn_->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
@@ -196,16 +218,18 @@ bool SQLessDB_$DB::has_table_$TABLE() {
     return exists;
 }
 
-SQLessTable_$TABLE* SQLessDB_$DB::table_$TABLE() {
-    if (!table_$TABLE_)
-        table_$TABLE_ = new SQLessTable_$TABLE(this);
+$PREFIX_$NAME* SQLessDB_$DB::$TYPE_$NAME() {
+    if (!$TYPE_$NAME_)
+        $TYPE_$NAME_ = new $PREFIX_$NAME(this);
 
-    return table_$TABLE_;
+    return $TYPE_$NAME_;
 }
 '''
+        template = template.replace('$NAME', name)
+        template = template.replace('$PREFIX_', _prefix)
+        template = template.replace('$TYPE', _type)
         template = template.replace('$DB', database)
-        template = template.replace('$TABLE', table)
-        template = template.replace('$HAS_TABLE_SQL', self.sqlgen.HasTableSQL(table).replace('"', '\\"'))
+        template = template.replace('$HAS_SQL', _has_sql.replace('"', '\\"'))
 
         return template
 
@@ -285,9 +309,9 @@ SQLessColumn_$TABLE_$COLUMN* SQLessTable_$TABLE::column_$COLUMN() {
         template += self._ImplTableInsert(schema)
 
         # Select
-        template += self._ImplSelectParamAndResult(schema)
-        template += self._ImplTableSelect(schema)
-        template += self._ImplSelectResultGetRow(schema)
+        template += self._ImplSelectParamAndResult(schema, False)
+        template += self._ImplTableViewSelect(schema, False)
+        template += self._ImplSelectResultGetRow(schema, False)
 
         # Update
         template += self._ImplUpdateParam(schema)
@@ -426,26 +450,38 @@ $BIND_FIELDS
 
         return template
 
-    def _ImplSelectParamAndResult(self, schema):
+    def _ImplSelectParamAndResult(self, schema, is_view):
+        prefix = config.kViewPrefix if is_view else config.kTablePrefix
+        table_view_name = prefix + schema['name']
+        ret = ''
+
         # SelectParam 构造函数
-        spr = '\nSQLessTable_' + schema['name'] + '::SelectParam::SelectParam():\n'
+        select_ctor = """
+$TABLE_VIEW_NAME::SelectParam::SelectParam():
+    desc_(false),
+    limit_(0),
+    offset_(0),
+"""
+
         for col in schema['columns']:
-            spr += config.kIdent + col['name'] + '_(false),\n'
-        spr += config.kIdent + 'desc_(false) {\n}\n'
+            select_ctor += config.kIdent + col['name'] + '_(false),\n'
+
+        select_ctor = select_ctor.rstrip(',\n') + ' {\n}\n'
+        select_ctor = select_ctor.replace('$TABLE_VIEW_NAME', table_view_name)
+        ret += select_ctor
 
         # SelectParam 析构函数
-        spr += '\nSQLessTable_' + schema['name'] + '::SelectParam::~SelectParam() {\n}\n'
+        ret += '\n' + table_view_name + '::SelectParam::~SelectParam() {\n}\n'
 
         # 选择所有列
         select_all_template = '''
-SQLessTable_$TABLE::SelectParam& SQLessTable_$TABLE::SelectParam::add_all() {
+$TABLE_VIEW_NAME::SelectParam& $TABLE_VIEW_NAME::SelectParam::add_all() {
 $ADD_COLUMNS
     return *this;
 }
 '''
-
         order_by_template = '''
-SQLessTable_$TABLE::SelectParam& SQLessTable_$TABLE::SelectParam::order_by_$COLUMN(bool desc) {
+$TABLE_VIEW_NAME::SelectParam& $TABLE_VIEW_NAME::SelectParam::order_by_$COLUMN(bool desc) {
     order_by_ = "$COLUMN";
     desc_ = desc;
     return *this;
@@ -455,30 +491,33 @@ SQLessTable_$TABLE::SelectParam& SQLessTable_$TABLE::SelectParam::order_by_$COLU
         order_by_columns = ''
         for col in schema['columns']:
             add_columns += config.kIdent + col['name'] + '_ = true;\n'
-            order_by_columns += order_by_template.replace('$TABLE', schema['name']).replace('$COLUMN', col['name']) + '\n'
+            order_by_columns += order_by_template.replace('$TABLE_VIEW_NAME', table_view_name).replace('$COLUMN', col['name']) + '\n'
 
-        spr += select_all_template.replace('$TABLE', schema['name']).replace('$ADD_COLUMNS', add_columns)
-        spr += order_by_columns
+        ret += select_all_template.replace('$TABLE_VIEW_NAME', table_view_name).replace('$ADD_COLUMNS', add_columns)
+        ret += order_by_columns
 
         # SelectResult 构造函数
-        spr += '\nSQLessTable_' + schema['name'] + '::SelectResult::SelectResult():\n'
+        ret += '\n' + table_view_name + '::SelectResult::SelectResult():\n'
         for col in schema['columns']:
             # 初始化整形/浮点型和布尔型成员的默认值
             defval = self._SQLTypeToCppDefaultValue(col['type'])
             if len(defval) > 0:
-                spr += config.kIdent + col['name'] + '_(' + defval + '),\n'
-        spr += config.kIdent + 'stmt_(NULL) {\n}\n'
+                ret += config.kIdent + col['name'] + '_(' + defval + '),\n'
+        ret += config.kIdent + 'stmt_(NULL) {\n}\n'
 
         # SelectResult 析构函数
-        spr += '\nSQLessTable_' + schema['name'] + '::SelectResult::~SelectResult() {\n' + \
+        ret += '\n' + table_view_name + '::SelectResult::~SelectResult() {\n' + \
                 config.kIdent + 'if (stmt_)\n' + \
                 config.kIdent2 + 'sqlite3_finalize(stmt_);\n}\n'
 
-        return spr
+        return ret
 
-    def _ImplTableSelect(self, schema):
+    def _ImplTableViewSelect(self, schema, is_view):
+        prefix = config.kViewPrefix if is_view else config.kTablePrefix
+        table_view_name = prefix + schema['name']
+
         template = '''
-bool SQLessTable_$TABLE::select(const SelectParam& param, SelectResult* result) {
+bool $TABLE_VIEW_NAME::select(const SelectParam& param, SelectResult* result) {
     std::string sql = "SELECT ";
     std::string fields;
 $SELECT_FIELDS
@@ -487,11 +526,19 @@ $SELECT_FIELDS
         return false;
 
     sql += TrimRight(fields, " ,");
-    sql += " FROM $TABLE";
+    sql += " FROM $NAME";
 
     if (!param.condition_.empty()) {
         sql += " WHERE ";
         sql += param.condition_;
+    }
+    if (param.limit_ > 0) {
+        sql += " LIMIT ";
+        sql += NumberToString(param.limit_);
+    }
+    if (param.offset_ > 0) {
+        sql += " OFFSET ";
+        sql += NumberToString(param.offset_);
     }
 
     sql += ";";
@@ -513,15 +560,19 @@ $SELECT_FIELDS
             select_fields += config.kIdent + 'if (param.' + col['name'] + '_)\n' + \
                              config.kIdent2 + 'fields += "' + col['name'] + ', ";\n'
 
-        template = template.replace('$TABLE', schema['name'])
+        template = template.replace('$NAME', schema['name'])
+        template = template.replace('$TABLE_VIEW_NAME', table_view_name)
         template = template.replace('$SELECT_FIELDS', select_fields)
 
         return template
 
 
-    def _ImplSelectResultGetRow(self, schema):
+    def _ImplSelectResultGetRow(self, schema, is_view):
+        prefix = config.kViewPrefix if is_view else config.kTablePrefix
+        table_view_name = prefix + schema['name']
+
         template = '''
-bool SQLessTable_$TABLE::SelectResult::getRow() {
+bool $TABLE_VIEW_NAME::SelectResult::getRow() {
     if (!stmt_)
         return false;
 
@@ -569,7 +620,7 @@ $REMEMBER_COLUMNS
                               config.kIdent3 + col['name'] + ' = false;\n' +  config.kIdent2 + '} '
             _first = False
 
-        template = template.replace('$TABLE', schema['name'])
+        template = template.replace('$TABLE_VIEW_NAME', table_view_name)
         template = template.replace('$REMEMBER_COLUMNS', remember_columns)
         template = template.replace('$ASSIGN_COLUMNS', assign_columns)
 
@@ -660,8 +711,74 @@ bool SQLessTable_$TABLE::clear(int* affected_rows /* = NULL */) {
 }
 '''
         template = template.replace('$TABLE', schema['name'])
+        return template
+
+
+    def _ImplView(self, db_schema, schema):
+        template = '''
+// $DESCRIPTION
+const char SQLessView_$VIEW::kName[] = "$VIEW";
+
+SQLessView_$VIEW::SQLessView_$VIEW(SQLessDB_$DATABASE* db)
+    :db_(db) {
+}
+
+SQLessView_$VIEW::~SQLessView_$VIEW() {
+}
+
+bool SQLessView_$VIEW::exists() {
+    return db_->has_view_$VIEW();
+}
+
+bool SQLessView_$VIEW::create(const std::string& condition) {
+    std::string sql = "$CREATE_VIEW_SQL";
+
+    if (!condition.empty()) {
+        TrimRight(sql, ";");
+        sql += " WHERE " + condition + ";";
+    }
+
+    return db_->execQuery(sql);
+}
+
+bool SQLessView_$VIEW::drop() {
+    return db_->execQuery("$DROP_VIEW_SQL");
+}
+
+int SQLessView_$VIEW::row_count(const std::string& condition) {
+    std::string sql = "SELECT COUNT(*) FROM $VIEW";
+
+    if (!condition.empty())
+        sql += " WHERE " + condition;
+
+    sql += ";";
+
+    sqlite3_stmt* stmt = NULL;
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+        return -1;
+
+    int count = -1;
+    if (sqlite3_step(stmt) == SQLITE_ROW)
+        count = sqlite3_column_int(stmt, 0);
+
+    sqlite3_finalize(stmt);
+    return count;
+}
+'''
+        template = template.replace('$VIEW', schema['name'])
+        template = template.replace('$DESCRIPTION', schema['desc'])
+        template = template.replace('$DATABASE', db_schema['name'])
+        template = template.replace('$CREATE_VIEW_SQL', self.sqlgen.CreateViewSQL(schema))
+        template = template.replace('$DROP_VIEW_SQL', self.sqlgen.DropViewSQL(schema['name']))
+
+        mock_schema = self.declare.MockViewAsTableSchema(db_schema, schema)
+
+        template += self._ImplSelectParamAndResult(mock_schema, True)
+        template += self._ImplTableViewSelect(mock_schema, True)
+        template += self._ImplSelectResultGetRow(mock_schema, True)
 
         return template
+
 
     def _ImplColumn(self, table, schema):
         template = '''
@@ -722,6 +839,10 @@ std::string &TrimRight(std::string &s, const std::string &m) {
         return s.erase(0, s.length());
 
     return s.erase(pe + 1, s.length() - 1 - pe);
+}
+
+std::string NumberToString(int64_t n) {
+    return static_cast<std::ostringstream*>( &(std::ostringstream() << n) )->str();
 }
 
 }
