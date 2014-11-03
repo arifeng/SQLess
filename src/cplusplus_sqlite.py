@@ -93,9 +93,6 @@ bool SQLessConn::exec(const std::string& sql_stmt, std::string* result) {
     SQLessResults results;
     std::string sql = sql_stmt;
 
-    if (sql_stmt.find("LIMIT") == sql_stmt.npos)
-        sql = TrimRight(sql, "; ") + " LIMIT 1;";
-
     if (!exec(sql, &results))
         return false;
 
@@ -792,7 +789,7 @@ int SQLessView_$VIEW::row_count(const std::string& condition) {
         template = template.replace('$DESCRIPTION', schema['desc'])
         template = template.replace('$DATABASE', db_schema['name'])
         template = template.replace('$CREATE_VIEW_SQL', self.sqlgen.CreateViewSQL(schema))
-        template = template.replace('$DROP_VIEW_SQL', self.sqlgen.DropViewSQL(schema['name'], ))
+        template = template.replace('$DROP_VIEW_SQL', self.sqlgen.DropViewSQL(schema['name']))
 
         mock_schema = self.declare.MockViewAsTableSchema(db_schema, schema)
 
