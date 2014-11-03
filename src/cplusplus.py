@@ -50,6 +50,8 @@ class CPlusPlus:
                 for view in database['views']:
                     fd += 'class ' + config.kViewPrefix + view['name'] + ';\n'
 
+        fd += '\n' + 'typedef std::vector<std::vector<std::string> > SQLessResults;' + '\n'
+
         return fd;
 
 
@@ -69,15 +71,22 @@ public:
     // 数据库连接是否有效
     bool isValid();
 
+    // 数据库版本
+    std::string version();
+
     // 返回底层数据库句柄
     Handle handle() { return handle_; }
+
+    // 执行查询，返回全部结果集
+    // 请使用LIMIT关键字限制结果行数
+    bool exec(const std::string& sql_stmt, SQLessResults* result);
+
+    // 执行查询，返回查询结果第一行的第一列的值
+    bool exec(const std::string& sql_stmt, std::string* result = NULL);
 
     // 关闭数据库连接
     // 同时delete所有的用户数据库实例
     void close();
-
-    // 执行数据库无关的查询，如查询服务器版本
-    bool execQuery(const std::string& sql_stmt, std::string* result);
 
     // 事务处理
     void beginTransaction();
@@ -138,7 +147,7 @@ public:
     SQLessConn* connection() { return conn_; }
 
     // 直接执行SQL语句
-    bool execQuery(const std::string& sql_stmt);
+    bool exec(const std::string& sql_stmt);
 
     // 指定数据表是否存在以及获取相应表
 $TABLE_GETTERS
@@ -628,6 +637,7 @@ private:
 
 #include <cstdint>
 #include <string>
+#include <vector>
         '''
 
         h = h.replace('$VERSION', config.version)
@@ -659,4 +669,3 @@ private:
         f += '#endif\n'
 
         return f
-

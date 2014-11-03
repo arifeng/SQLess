@@ -52,11 +52,60 @@ bool SQLessConn::connect(const std::string& path, const std::string& key /* = ""
         sqlite3_key(handle_, key.c_str(), key.length());
 #endif
 
-    return true;
+    return exec("SELECT * FROM sqlite_master LIMIT 0");
 }
 
 bool SQLessConn::isValid() {
     return handle_ != NULL;
+}
+
+std::string SQLessConn::version() {
+    std::string ver;
+    exec("SELECT sqlite_version();", &ver);
+    return ver;
+}
+
+bool SQLessConn::exec(const std::string& sql_stmt, SQLessResults* result) {
+    if (!handle_)
+        return false;
+
+    sqlite3_stmt* stmt = NULL;
+    if (sqlite3_prepare_v2(handle_, sql_stmt.c_str(), sql_stmt.size(), &stmt, 0) != SQLITE_OK)
+        return false;
+
+    if (result) {
+        result->clear();
+        int columns = sqlite3_column_count(stmt);
+        std::vector<std::string> row;
+        while (sqlite3_step(stmt) == SQLITE_ROW) {
+            row.clear();
+            for (int i = 0; i < columns; i++)
+                row.push_back(std::string((const char*)sqlite3_column_text(stmt, i), sqlite3_column_bytes(stmt, i)));
+            result->push_back(row);
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return true;
+}
+
+bool SQLessConn::exec(const std::string& sql_stmt, std::string* result) {
+    SQLessResults results;
+    std::string sql = sql_stmt;
+
+    if (sql_stmt.find("LIMIT") == sql_stmt.npos)
+        sql = TrimRight(sql, "; ") + " LIMIT 1;";
+
+    if (!exec(sql, &results))
+        return false;
+
+    if (result) {
+        result->clear();
+        if (results.size() > 0 && results[0].size() > 0)
+            *result = results[0][0];
+    }
+
+    return true;
 }
 
 void SQLessConn::close() {
@@ -67,11 +116,11 @@ void SQLessConn::close() {
 }
 
 void SQLessConn::beginTransaction() {
-    sqlite3_exec(handle_, "$BEGIN_TRANS_SQL", NULL, NULL, NULL);
+    exec("$BEGIN_TRANS_SQL");
 }
 
 void SQLessConn::endTransaction() {
-    sqlite3_exec(handle_, "$END_TRANS_SQL", NULL, NULL, NULL);
+    exec("$END_TRANS_SQL");
 }
 
 int SQLessConn::lastErrorCode() {
@@ -150,9 +199,9 @@ void SQLessDB_$DB::drop() {
 
 }
 
-bool SQLessDB_$DB::execQuery(const std::string& sql_stmt) {
+bool SQLessDB_$DB::exec(const std::string& sql_stmt) {
     use();
-    return sqlite3_exec(conn_->handle(), sql_stmt.c_str(), NULL, NULL, NULL) == SQLITE_OK;
+    return conn_->exec(sql_stmt);
 }
 
 bool SQLessDB_$DB::create() {
@@ -204,18 +253,8 @@ bool SQLessDB_$DB::use() {
 
         template = '''
 bool SQLessDB_$DB::has_$TYPE_$NAME() {
-    std::string sql = "$HAS_SQL";
-
-    sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(conn_->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
-        return false;
-
-    bool exists = false;
-    if (sqlite3_step(stmt) == SQLITE_ROW)
-        exists = true;
-
-    sqlite3_finalize(stmt);
-    return exists;
+    std::string res, sql = "$HAS_SQL";
+    return conn_->exec(sql, &res) && res == "$NAME";
 }
 
 $PREFIX_$NAME* SQLessDB_$DB::$TYPE_$NAME() {
@@ -253,31 +292,23 @@ bool SQLessTable_$TABLE::exists() {
 }
 
 bool SQLessTable_$TABLE::create() {
-    return db_->execQuery("$CREATE_TABLE_SQL");
+    return db_->exec("$CREATE_TABLE_SQL");
 }
 
 bool SQLessTable_$TABLE::drop() {
-    return db_->execQuery("$DROP_TABLE_SQL");
+    return db_->exec("$DROP_TABLE_SQL");
 }
 
 int SQLessTable_$TABLE::row_count(const std::string& condition) {
-    std::string sql = "SELECT COUNT(*) FROM $TABLE";
+    std::string res, sql = "SELECT COUNT(*) FROM $TABLE";
 
     if (!condition.empty())
         sql += " WHERE " + condition;
 
-    sql += ";";
-
-    sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+    if (!db_->connection()->exec(sql, &res))
         return -1;
 
-    int count = -1;
-    if (sqlite3_step(stmt) == SQLITE_ROW)
-        count = sqlite3_column_int(stmt, 0);
-
-    sqlite3_finalize(stmt);
-    return count;
+    return atoi(res.c_str());
 }
 '''
 
@@ -408,7 +439,7 @@ $VALUE_FIELDS
     sql += ");";
 
     sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), sql.size(), &stmt, 0) != SQLITE_OK)
         return false;
 
 $BIND_FIELDS
@@ -544,7 +575,7 @@ $SELECT_FIELDS
     sql += ";";
 
     sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), sql.size(), &stmt, 0) != SQLITE_OK)
         return false;
 
     result->param_ = param;
@@ -649,7 +680,7 @@ $SELECT_COLUMNS
     sql.append(";");
 
     sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), sql.size(), &stmt, 0) != SQLITE_OK)
         return false;
 
 $BIND_COLUMNS
@@ -699,7 +730,7 @@ bool SQLessTable_$TABLE::remove(const std::string& condition, int* affected_rows
 
     sql += ";";
 
-    bool succ = db_->execQuery(sql);
+    bool succ = db_->exec(sql);
     if (succ && affected_rows)
         *affected_rows = sqlite3_changes(db_->connection()->handle());
 
@@ -738,38 +769,30 @@ bool SQLessView_$VIEW::create(const std::string& condition) {
         sql += " WHERE " + condition + ";";
     }
 
-    return db_->execQuery(sql);
+    return db_->exec(sql);
 }
 
 bool SQLessView_$VIEW::drop() {
-    return db_->execQuery("$DROP_VIEW_SQL");
+    return db_->exec("$DROP_VIEW_SQL");
 }
 
 int SQLessView_$VIEW::row_count(const std::string& condition) {
-    std::string sql = "SELECT COUNT(*) FROM $VIEW";
+    std::string res, sql = "SELECT COUNT(*) FROM $VIEW";
 
     if (!condition.empty())
         sql += " WHERE " + condition;
 
-    sql += ";";
-
-    sqlite3_stmt* stmt = NULL;
-    if (sqlite3_prepare_v2(db_->connection()->handle(), sql.c_str(), -1, &stmt, 0) != SQLITE_OK)
+    if (!db_->connection()->exec(sql, &res))
         return -1;
 
-    int count = -1;
-    if (sqlite3_step(stmt) == SQLITE_ROW)
-        count = sqlite3_column_int(stmt, 0);
-
-    sqlite3_finalize(stmt);
-    return count;
+    return atoi(res.c_str());
 }
 '''
         template = template.replace('$VIEW', schema['name'])
         template = template.replace('$DESCRIPTION', schema['desc'])
         template = template.replace('$DATABASE', db_schema['name'])
         template = template.replace('$CREATE_VIEW_SQL', self.sqlgen.CreateViewSQL(schema))
-        template = template.replace('$DROP_VIEW_SQL', self.sqlgen.DropViewSQL(schema['name']))
+        template = template.replace('$DROP_VIEW_SQL', self.sqlgen.DropViewSQL(schema['name'], ))
 
         mock_schema = self.declare.MockViewAsTableSchema(db_schema, schema)
 
@@ -797,11 +820,11 @@ SQLessColumn_$TABLE_$COLUMN::~SQLessColumn_$TABLE_$COLUMN() {
 }
 
 bool SQLessColumn_$TABLE_$COLUMN::exists() {
-    return table_->database()->execQuery("$HAS_COLUMN_SQL");
+    return table_->database()->exec("$HAS_COLUMN_SQL");
 }
 
 bool SQLessColumn_$TABLE_$COLUMN::create() {
-    return table_->database()->execQuery("$ADD_COLUMN_SQL");
+    return table_->database()->exec("$ADD_COLUMN_SQL");
 }
 '''
         default_value = ''

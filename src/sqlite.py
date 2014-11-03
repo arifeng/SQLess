@@ -121,18 +121,22 @@ class Sqlite:
         ''' 删除视图 '''
         return 'DROP VIEW ' + view
 
-    def CreateViewSQL(self, schema, temp=False):
+    def CreateViewSQL(self, schema):
         ''' 创建视图，未附加任何条件限制，并以逗号结尾 '''
-        _temp = 'TEMP ' if temp else ''
+        _temp = 'TEMP ' if schema.get('temp') or schema.get('temporary') else ''
         sql = 'CREATE ' + _temp + 'VIEW ' + schema['name'] + ' AS SELECT '
 
         tables = []
         for col in schema['columns']:
             table = col['table']
+
             _as = ''
             if col.get('name'):
-                _as = ' AS ' + col['name']
-            sql += table + '.' + col['column'] + _as + ', '
+                _as = col['name']
+            else:
+                _as = col['table'] + '_' + col['column']
+
+            sql += table + '.' + col['column'] + ' AS ' + _as + ', '
             if not table in tables:
                 tables.append(table)
 
