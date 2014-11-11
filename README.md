@@ -4,11 +4,35 @@ SQLess is an code generator that enables coding with relational database in an o
 
 For the generated code, every connection, database, table and even column is represented by a distinct object, and you can use this object to do CRUD operations and more.
 
-Currently only C++ language and [SQLite](http://www.sqlite.org/) database is supported, but MySQL database support will come soon.
+SQLess is not a database wrapper like [sqlapi](http://www.sqlapi.com/), which still needs you to write SQL statement and do parameter binding.etc.
 
-## Features & Advantages
+SQLess is also not an Object-Relational Mapping (ORM) system like [ODB](http://www.codesynthesis.com/products/odb/), which tightly binds to the language used and have obscure usage.
 
-SQLess is not a database wrapper like [sqlapi](http://www.sqlapi.com/), which still needs you to write SQL statment and do parameter binding.etc. SQLess is also not an Object-Relational Mapping (ORM) system like [ODB](http://www.codesynthesis.com/products/odb/), which tightly binds to the language used and have obscure usage. If you have ever used [Protobuf](https://code.google.com/p/protobuf/), you will find them quiet similer. In fact, SQLess is inspired from Protobuf.
+If you have ever used [Protobuf](https://code.google.com/p/protobuf/), you will find them quiet similer. In fact, SQLess is inspired from Protobuf.
+
+## Compare
+
+### Ordinary method drawbacks
+
+* Difficult and time consuming. Writing database conversion code for any non-trivial application requires extensive knowledge of the specific database system and its APIs.
+* Easy to make mistake. It is easy to misspell column names or pass incompatible values in SQL queries. It is also easy to construct a SQL statement that has syntax error, even worse if using printf series function. Forgetting escaping special charactar is another common thing.
+* The above errors can only be detected at runtime, resulting in a long debug circle.
+* Database vendor lock-in. The conversion code is written for a specific database which makes it hard to switch to another database vendor.
+* Complicates the application. The database conversion code often ends up interspersed throughout the application making it hard to debug, change, and maintain.
+
+### What if using SQLess?
+
+* Ease of use. The interface for a language is the same and you don't need to known the used database deeply. The interface is also very simple.
+* Concise code. With SQLess generated codes hiding the details of the underlying database, the application logic is written using the natural object vocabulary instead of tables, columns and SQL. The resulting code is simpler and thus easier to read and understand.
+* High-efficiency. If your editor support auto-completiton, you can write code unbeliable faster!
+* Database portability. Because the database conversion code is automatically generated, it is easy to switch from one database vendor to another.
+* Safety. You use C++ identifiers instead of strings to refer to object members and the generated code makes sure database and C++ types are compatible. All this helps catch programming errors at compile-time rather than at runtime.
+
+## Support
+
+Because the database schema is defined in a language unrelated style, SQLess can support any object-oriented language in theory. The backend database is also not restricted. But due to my restricted time and energy...
+
+Currently only C++ language and [SQLite](http://www.sqlite.org/) database is supported, but MySQL database support is coming soon.
 
 ## How to use
 
@@ -58,6 +82,7 @@ Supported keys in table-column map:
 | name | string | mandatory | the name of the column |
 | desc | string | mandatory | the description of the column |
 | type | string | mandatory | one of "INT", "BIGINT", "REAL", "TEXT" or "BLOB", case insensitive. |
+| default | * | optional | default value of this column. Used in the create table statement. |
 | index | bool | optional | create index on this column, default to false. |
 | primary_key | bool | optional | treat this column as primary key, default to false. |
 | auto_increment | bool | optional | whether the column value is auto increment, default to false. |
