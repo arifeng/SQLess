@@ -99,7 +99,7 @@ class Sqlite:
 
     def HasTableSQL(self, table):
         ''' 数据库中是否存在指定名称的表 '''
-        return 'SELECT name FROM sqlite_master WHERE type = "table" AND name = "' + table + '";'
+        return 'SELECT name FROM (SELECT * FROM sqlite_master UNION ALL SELECT * FROM sqlite_temp_master) WHERE type = "table" AND name = "' + table + '";'
 
     def DropTableSQL(self, table):
         ''' 删除数据表 '''
@@ -115,7 +115,7 @@ class Sqlite:
 
     def HasViewSQL(self, view):
         ''' 视图是否存在 '''
-        return 'SELECT name FROM sqlite_master WHERE type = "view" AND name = "' + view + '";'
+        return 'SELECT name FROM (SELECT * FROM sqlite_master UNION ALL SELECT * FROM sqlite_temp_master)  WHERE type = "view" AND name = "' + view + '";'
 
     def DropViewSQL(self, view):
         ''' 删除视图 '''

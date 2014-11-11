@@ -60,9 +60,7 @@ bool SQLessConn::isValid() {
 }
 
 std::string SQLessConn::version() {
-    std::string ver;
-    exec("SELECT sqlite_version();", &ver);
-    return ver;
+    return sqlite3_libversion();
 }
 
 bool SQLessConn::exec(const std::string& sql_stmt, SQLessResults* result) {
@@ -233,6 +231,8 @@ bool SQLessDB_$DB::use() {
                 delete_views += config.kIdent + 'if (view_' + view['name'] + '_)\n' + \
                                 config.kIdent2 + 'delete view_' + view['name'] + '_;\n'
                 view_has_and_getters += self._ImplHasTableView(database['name'], view['name'], True)
+        else:
+            init_tables = init_tables.rstrip(',\n')
 
         template = template.replace('$INIT_TABLES', init_tables)
         template = template.replace('$DELETE_TABLES', delete_tables)
@@ -630,7 +630,9 @@ $REMEMBER_COLUMNS
             elif stype == 'REAL':
                 rv = colname + '_ = sqlite3_column_double(stmt_, i);'
             elif stype == 'TEXT' or stype == 'BLOB':
-                rv = colname + '_.assign((const char*)sqlite3_column_text(stmt_, i), sqlite3_column_bytes(stmt_, i));'
+                # sqlite文档规定 sqlite3_column_bytes 必须要在 sqlite3_column 函数之后调用，即在完成类型转换之后
+                # 而C++中函数实参的计算顺序C++标准没有规定，因此分两条语句完成
+                rv = 'const char* p = (const char*)sqlite3_column_text(stmt_, i); ' + colname + '_ .assign(p, sqlite3_column_bytes(stmt_, i));'
             else:
                 print 'Unkown SQL type: ' + stype
                 exit(1)
