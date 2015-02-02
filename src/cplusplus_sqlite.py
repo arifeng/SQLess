@@ -52,7 +52,12 @@ bool SQLessConn::connect(const std::string& path, const std::string& key /* = ""
         sqlite3_key(handle_, key.c_str(), key.length());
 #endif
 
-    return exec("SELECT * FROM sqlite_master LIMIT 0");
+    if(!exec("SELECT * FROM sqlite_master LIMIT 0")) {
+        close();
+        return false;
+    }
+
+    return true;
 }
 
 bool SQLessConn::isValid() {
