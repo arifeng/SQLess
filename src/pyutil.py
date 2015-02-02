@@ -29,10 +29,13 @@ def ReadableFileSize(path):
     except OSError:
         return ' '
 
-def ReadFile(path):
+def ReadFile(path, charset='UTF-8', binary=False):
     '''读取文件内容，返回字符串'''
     try:
-        f = open(path, 'r')
+        if binary:
+            f = open(path, 'rb')
+        else:
+            f = open(path, 'r', encoding=charset)
         content = f.read()
         f.close()
         return content
@@ -52,9 +55,20 @@ def GetFileMd5(filename):
     f.close()
     return myhash.hexdigest().upper()
 
-def WriteFile(path, content):
+def UnderScoreToCamcelCase(var):
+    ''' 将foo_bar类型风格的名称更改为FooBar'''
+    camel = ''
+    for part in var.split('_'):
+        camel += part.capitalize()
+
+    return camel
+
+def WriteFile(path, content, binary=False):
     '''将字符串作为文件内容写入文件'''
-    f = open(path, 'w')
+    if binary:
+        f = open(path, 'wb')
+    else:
+        f = open(path, 'w')
     f.write(content)
     f.close()
 

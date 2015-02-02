@@ -1,6 +1,7 @@
 #coding: utf-8
 # 生成C++ 目标代码头文件(.h)
 
+import codecs
 import time
 import uuid
 
@@ -17,9 +18,8 @@ class CPlusPlus:
         self.impl = cplusplus_sqlite.CPlusPlusImpl(schema, sqlgen, self, savepath)
 
     def Generate(self):
-        utf8_bom = '\xEF\xBB\xBF'
-        pyutil.WriteFile(self.savepath + '.h', utf8_bom + self.GenerateHeaderFile())
-        pyutil.WriteFile(self.savepath + '.cc',utf8_bom + self.impl.GenerateImplFile())
+        pyutil.WriteFile(self.savepath + '.h', codecs.BOM_UTF8 + self.GenerateHeaderFile().encode('utf-8'), True)
+        pyutil.WriteFile(self.savepath + '.cc',codecs.BOM_UTF8 + self.impl.GenerateImplFile().encode('utf-8'), True)
 
     def GenerateHeaderFile(self):
         content = self._Header()
@@ -352,9 +352,9 @@ $COLUMN_ADDERS
 
 $COLUMN_ORDERBYS
 
-        void set_condition(const std::string& cond) { condition_ = cond; }
-        void set_limit(int count) { limit_ = count; }
-        void set_offset(int offset) { offset_ = offset; }
+        SelectParam& set_condition(const std::string& cond) { condition_ = cond; return *this; }
+        SelectParam& set_limit(int count) { limit_ = count; return *this; }
+        SelectParam& set_offset(int offset) { offset_ = offset; return *this; }
 
       private:
         friend class $TABLE_NAME;
