@@ -1,7 +1,7 @@
 #!/usr/bin/python
 #coding: utf-8
 
-import simplejson as json
+import json
 import os
 import sys
 
@@ -21,7 +21,7 @@ An object-oriented database operating code generator
 -h, --help : Show this help message and exit
 -v, --version: Show version info and exit
 """
-    print usage.replace('$VERSION', config.version)
+    print(usage.replace('$VERSION', config.version))
 
 
 def ParseOptions():
@@ -32,7 +32,7 @@ def ParseOptions():
 
     for p in sys.argv[1:]:
         if p.startswith('--outdir'):
-            print p
+            print(p)
             opt['outdir'] = p[9:]
         elif p == '--cpp':
             opt['target'] = 'cpp'
@@ -42,7 +42,7 @@ def ParseOptions():
             Usage()
             exit(0)
         elif p == '-v' or p == '--version':
-            print 'SQLess v' + config.version
+            print('SQLess v' + config.version)
             exit(0)
         elif not p.startswith('-'):
             opt['schema_file'] = p
@@ -57,12 +57,12 @@ if __name__ == '__main__':
     opt = ParseOptions()
 
     if not opt.get('schema_file'):
-        print 'No schema file specified!'
+        print ('No schema file specified!')
         exit(1)
 
     schema = json.loads(pyutil.ReadFile(opt['schema_file']))
     if not schema.get('databases'):
-        print 'schema file does not has a "databases" key!'
+        print ('schema file does not has a "databases" key!')
         exit(1)
 
     if not opt.get('outdir'):
@@ -74,13 +74,13 @@ if __name__ == '__main__':
     if opt.get('database') == 'sqlite':
         database_engine = sqlite.Sqlite()
     else:
-        print 'Unsupport database: ' + opt['database']
+        print ('Unsupport database: ' + opt['database'])
         exit(1)
 
     if opt.get('target') == 'cpp':
         engine = cplusplus.CPlusPlus(schema, database_engine, outfile)
     else:
-        print 'Unknown target language: ' + opt['target']
+        print ('Unknown target language: ' + opt['target'])
         exit(1)
 
     engine.Generate()

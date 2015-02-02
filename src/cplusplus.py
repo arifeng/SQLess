@@ -106,7 +106,7 @@ public:
             handle_type = 'sqlite3*'
             connect_params = 'const std::string& path, const std::string& key = ""'
         else:
-            print 'Unknown database: ' + self.sqlgen.Name()
+            print ('Unknown database: ' + self.sqlgen.Name())
             exit(1)
 
         dc = dc.replace('$HANDLE_TYPE', handle_type)
@@ -288,7 +288,7 @@ $COLUMN_MEMBERS
     def _SQLTypeToCPPType(self, col_type, is_param):
         '''将SQL的数据类型转为相应C++数据类型'''
         if self.sqlgen.Name() != 'sqlite':
-            print 'Unknown database :' + self.sqlgen.Name()
+            print ('Unknown database :' + self.sqlgen.Name())
             exit(1)
 
         sql_type = self.sqlgen.MapDataType(col_type)
@@ -302,7 +302,7 @@ $COLUMN_MEMBERS
         elif sql_type == 'TEXT' or sql_type == 'BLOB':
             cpp_type = 'const std::string&' if is_param else 'std::string'
         else:
-            print 'unknown SQL type: ' + sql_type
+            print ('unknown SQL type: ' + sql_type)
             exit(1)
 
         return cpp_type
@@ -550,7 +550,7 @@ private:
         template = template.replace('$SELECT_PARAM', self._DeclareSelectParam(mock_schema, view_name))
         template = template.replace('$SELECT_RESULT', self._DeclareSelectResult(mock_schema, view_name))
 
-        print self.sqlgen.CreateViewSQL(schema)
+        print (self.sqlgen.CreateViewSQL(schema))
 
         return template
 
@@ -611,7 +611,7 @@ private:
             elif stype == 'TEXT':
                 default_value += 'char kDefault[];\n'   # 在cc文件中定义
             else:
-                print 'Default value not supported for column ' + schema['name'] + ' with type ' + schema['type']
+                print ('Default value not supported for column ' + schema['name'] + ' with type ' + schema['type'])
                 exit(1)
 
         template = template.replace('$COLUMN', schema['name'])
@@ -649,7 +649,7 @@ private:
         if self.sqlgen.Name() is 'sqlite':
             h += '#include <sqlite3.h>'
         else:
-            print 'unknown database ' + str(self.sqlgen.Name())
+            print ('unknown database ' + str(self.sqlgen.Name()))
             exit(1)
         h += '\n';
 

@@ -364,7 +364,7 @@ SQLessColumn_$TABLE_$COLUMN* SQLessTable_$TABLE::column_$COLUMN() {
     def _SQLTypeToCppDefaultValue(self, col_type):
         '''返回SQL的数据类型对应C++数据类型的默认初始化值'''
         if self.sqlgen.Name() != 'sqlite':
-            print 'Unknown database :' + self.sqlgen.Name()
+            print ('Unknown database :' + self.sqlgen.Name())
             exit(1)
 
         sql_type = self.sqlgen.MapDataType(col_type)
@@ -415,7 +415,7 @@ SQLessColumn_$TABLE_$COLUMN* SQLessTable_$TABLE::column_$COLUMN() {
         elif stype == 'TEXT' or stype == 'BLOB':
             rv = 'sqlite3_bind_text(stmt, sqlite3_bind_parameter_index(stmt, "@' + field + '"), param.' + field + '_.c_str(), param.' + field + '_.length(), SQLITE_STATIC);'
         else:
-            print 'Unknown SQL type: ' + stype
+            print ('Unknown SQL type: ' + stype)
             exit(1)
 
         return rv
@@ -639,7 +639,7 @@ $REMEMBER_COLUMNS
                 # 而C++中函数实参的计算顺序C++标准没有规定，因此分两条语句完成
                 rv = 'const char* p = (const char*)sqlite3_column_text(stmt_, i); ' + colname + '_ .assign(p, sqlite3_column_bytes(stmt_, i));'
             else:
-                print 'Unkown SQL type: ' + stype
+                print ('Unkown SQL type: ' + stype)
                 exit(1)
 
             return rv

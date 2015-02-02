@@ -32,7 +32,7 @@ class Sqlite:
         for index_col in index_cols:
             sql += self._CreateIndexSQL(schema['name'], index_col)
 
-        print sql
+        print (sql)
         return sql
 
     def _ColumnSQL(self, schema):
@@ -47,7 +47,7 @@ class Sqlite:
         #  自增
         if schema.get('auto_increment'):
             if ctype != 'INTEGER' and ctype != 'BIGINT':
-                print 'auto increment column type must be integer or bigint !'
+                print ('auto increment column type must be integer or bigint !')
                 exti(1)
             sql += ' AUTO_INCREMENT'
 
@@ -63,16 +63,16 @@ class Sqlite:
         default_value = schema.get('default')
         if type(default_value) == type(0):
           if ctype != 'INTEGER' and ctype != 'BIGINT':
-            print 'Not an integer/bitint type but has a integer default value'
+            print ('Not an integer/bitint type but has a integer default value')
             exit(1)
           sql += ' DEFAULT ' + str(default_value)
         elif type(default_value) == type(''):
           if ctype != 'TEXT':
-            print 'Not an text type but has a text default value'
+            print ('Not an text type but has a text default value')
             exit(1)
           sql += ' DEFAULT \'' + default_value + '\''
         elif default_value:
-          print 'unknown default value: ' + str(default_value)
+          print ('unknown default value: ' + str(default_value))
           exit(1)
 
         return sql
@@ -89,7 +89,7 @@ class Sqlite:
 
         sql = sql.rstrip(', ') + '); '
 
-        print sql
+        print (sql)
         return sql
 
     def _CreateIndexSQL(self, table, column):
@@ -175,7 +175,7 @@ class Sqlite:
         elif t in blob_alias:
             col_type = 'BLOB'
         else:
-            print 'unknown column type: ' + t
+            print ('unknown column type: ' + t)
             exit(1)
 
         return col_type
